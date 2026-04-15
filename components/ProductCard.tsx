@@ -1,8 +1,11 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardMedia, Typography, Box } from "@mui/material";
+import { Card, CardContent, CardMedia, Typography, Box, IconButton } from "@mui/material";
 import Link from "next/link";
+import { ShoppingCart } from "iconsax-react";
+import { useCart } from "@/contexts/CartContext";
+import { useSnackbar } from "@/components/SnackbarProvider";
 
 interface ProductCardProps {
   id: string;
@@ -14,9 +17,18 @@ interface ProductCardProps {
   bestSeller?: boolean;
 }
 
-export default function ProductCard({ name, price, image, slug, bestSeller }: ProductCardProps) {
+export default function ProductCard({ id, name, price, image, slug, bestSeller }: ProductCardProps) {
   // Fallback slug generation if not provided
   const productSlug = slug || encodeURIComponent(name.replace(/\s+/g, '-'));
+  const { addItem } = useCart();
+  const { showSnackbar } = useSnackbar();
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem({ id, name, price, image, slug: productSlug });
+    showSnackbar(`เพิ่ม "${name}" ลงตะกร้าแล้ว`, "success");
+  };
 
   return (
     <Link href={`/product/${productSlug}`} style={{ textDecoration: 'none' }}>
@@ -31,7 +43,8 @@ export default function ProductCard({ name, price, image, slug, bestSeller }: Pr
           "&:hover": { 
             transform: "translateY(-4px)", 
             borderColor: "primary.main",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.05)"
+            boxShadow: "0 10px 30px rgba(0,0,0,0.05)",
+            "& .cart-btn": { opacity: 1, transform: "scale(1)" }
           },
           cursor: "pointer",
           position: 'relative',
@@ -45,7 +58,7 @@ export default function ProductCard({ name, price, image, slug, bestSeller }: Pr
             sx={{ 
               position: 'absolute', 
               top: 10, 
-              right: 10, 
+              left: 10, 
               bgcolor: 'primary.main', 
               color: 'white', 
               px: 1.5, 
@@ -59,6 +72,30 @@ export default function ProductCard({ name, price, image, slug, bestSeller }: Pr
             BEST SELLER
           </Box>
         )}
+
+        {/* Add to Cart Button — appears on hover */}
+        <IconButton
+          className="cart-btn"
+          onClick={handleAddToCart}
+          sx={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            zIndex: 10,
+            bgcolor: 'primary.main',
+            color: 'white',
+            opacity: 0,
+            transform: 'scale(0.8)',
+            transition: '0.25s ease',
+            boxShadow: '0 4px 12px rgba(215,20,20,0.3)',
+            width: 36,
+            height: 36,
+            "&:hover": { bgcolor: '#cc0000', transform: 'scale(1.1) !important' },
+          }}
+        >
+          <ShoppingCart size="18" variant="Bold" color="#FFF" />
+        </IconButton>
+
         <CardMedia
           component="img"
           height="220"
@@ -92,3 +129,4 @@ export default function ProductCard({ name, price, image, slug, bestSeller }: Pr
     </Link>
   );
 }
+

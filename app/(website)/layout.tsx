@@ -1,6 +1,7 @@
 import React from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import CartDrawer from "@/components/CartDrawer";
 import { Box } from "@mui/material";
 
 export default function WebsiteLayout({
@@ -10,9 +11,10 @@ export default function WebsiteLayout({
 }) {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Header />
+      <Header key="website-header" />
       <main style={{ flexGrow: 1 }}>{children}</main>
       <Footer />
+      <CartDrawer />
     </Box>
   );
 }

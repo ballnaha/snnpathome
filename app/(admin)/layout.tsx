@@ -77,7 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, bgcolor: "white" }}>
-         <Image src="/images/logo.png" alt="SNNP Admin" width={100} height={32} style={{ objectFit: 'contain', filter: 'brightness(0)' }} />
+         <Image src="/images/logo.png" alt="SNNP Admin" width={100} height={32} style={{ objectFit: 'contain', filter: 'brightness(0)', height: 'auto' }} />
          <Typography variant="overline" sx={{ fontWeight: 800, color: 'primary.main', borderLeft: '1px solid #eee', pl: 1.5, lineHeight: 1 }}>Admin</Typography>
       </Box>
       <Divider sx={{ borderColor: 'grey.50' }} />

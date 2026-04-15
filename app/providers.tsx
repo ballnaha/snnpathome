@@ -6,6 +6,7 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import { Prompt } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { SnackbarProvider } from "@/components/SnackbarProvider";
+import { CartProvider } from "@/contexts/CartContext";
 
 const prompt = Prompt({
   weight: ["300", "400", "500", "600", "700"],
@@ -44,12 +45,15 @@ export default function Providers({ children, session }: { children: React.React
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <SnackbarProvider>
-            <div className={prompt.className}>
-              {children}
-            </div>
+            <CartProvider>
+              <div className={prompt.className}>
+                {children}
+              </div>
+            </CartProvider>
           </SnackbarProvider>
         </ThemeProvider>
       </AppRouterCacheProvider>
     </SessionProvider>
   );
 }
+

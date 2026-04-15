@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useCallback } from "react";
 import { 
   Box, 
   Container, 
@@ -8,16 +8,19 @@ import {
   Typography, 
   Badge, 
   IconButton, 
-  Menu, 
   MenuItem,
-  Fade,
   Divider,
-  Avatar
+  Avatar,
+  ClickAwayListener,
+  Paper,
+  Grow,
+  Popper
 } from "@mui/material";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useCart } from "@/contexts/CartContext";
 import { 
   ShoppingCart, 
   Profile, 
@@ -31,19 +34,65 @@ import {
   ClipboardText
 } from "iconsax-react";
 
+/**
+ * Remove any orphaned MUI modal/backdrop elements left in document.body.
+ * This can happen when navigating away from a page (e.g. 404) that had
+ * a MUI Menu/Modal mounted via Portal — the portal container may survive
+ * the React unmount and block clicks on the restored page.
+ */
+function cleanupOrphanedMuiElements() {
+  if (typeof document === "undefined") return;
+  // Remove stale MUI backdrop/modal root elements
+  document.querySelectorAll(".MuiModal-root, .MuiPopover-root, .MuiBackdrop-root").forEach((el) => {
+    // Only remove if it's a direct child of body (portal artifact)
+    if (el.parentElement === document.body) {
+      el.remove();
+    }
+  });
+  // Restore body styles that MUI Modal may have set
+  document.body.style.removeProperty("overflow");
+  document.body.style.removeProperty("padding-right");
+}
+
 export default function Header() {
   const { data: session, status } = useSession();
+  const { totalItems, openDrawer } = useCart();
   const [isSearchHovered, setIsSearchHovered] = React.useState(false);
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuTriggerRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+  // Close menu on route change
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
-  const handleCloseUserMenu = () => {
-    setAnchorEl(null);
-  };
+  // Clean up orphaned MUI modal elements on mount and on bfcache restore
+  useEffect(() => {
+    cleanupOrphanedMuiElements();
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        // Page was restored from bfcache
+        cleanupOrphanedMuiElements();
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      setMenuOpen(false);
+    };
+  }, []);
+
+  const handleToggleMenu = useCallback(() => {
+    setMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleCloseMenu = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
 
   return (
     <Box component="header" position="sticky" top={0} zIndex={1100} width="100%">
@@ -67,18 +116,19 @@ export default function Header() {
                   alt="SNNP Logo"
                   width={100}
                   height={32}
-                  style={{ objectFit: 'contain' }}
+                  style={{ objectFit: 'contain', height: 'auto' }}
                 />
               </Box>
             </Link>
 
             {/* Right: User & Cart */}
             <Stack direction="row" spacing={2} alignItems="center">
-              <Box sx={{ minHeight: 32, display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ minHeight: 32, display: 'flex', alignItems: 'center', position: 'relative' }}>
                 {session ? (
                   <>
                     <Box
-                      onClick={handleOpenUserMenu}
+                      ref={menuTriggerRef}
+                      onClick={handleToggleMenu}
                       sx={{ 
                         display: 'flex', 
                         alignItems: 'center', 
@@ -90,7 +140,8 @@ export default function Header() {
                         py: 0.5,
                         borderRadius: 10,
                         transition: '0.2s',
-                        "&:hover": { bgcolor: 'rgba(255,255,255,0.25)' }
+                        "&:hover": { bgcolor: 'rgba(255,255,255,0.25)' },
+                        userSelect: 'none',
                       }}
                     >
                       <Avatar 
@@ -108,52 +159,62 @@ export default function Header() {
                       <Typography variant="caption" fontWeight="700" sx={{ fontSize: "0.75rem", color: 'white' }}>
                         สวัสดี, {session.user?.name?.split(' ')[0] || "คุณลูกค้า"}
                       </Typography>
-                      <ArrowDown2 size="12" color="#FFF" variant="Bold" style={{ transform: anchorEl ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
+                      <ArrowDown2 size="12" color="#FFF" variant="Bold" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
                     </Box>
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={Boolean(anchorEl)}
-                      onClose={handleCloseUserMenu}
-                      TransitionComponent={Fade}
-                      elevation={0}
-                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                      PaperProps={{
-                        sx: {
-                          mt: 1.5,
-                          minWidth: 200,
-                          borderRadius: 3,
-                          boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                          border: '1px solid',
-                          borderColor: 'grey.100',
-                          p: 1
-                        }
-                      }}
+                    <Popper
+                      open={menuOpen}
+                      anchorEl={menuTriggerRef.current}
+                      placement="bottom-end"
+                      transition
+                      disablePortal
+                      style={{ zIndex: 1300 }}
                     >
-                      <MenuItem onClick={handleCloseUserMenu} component={Link} href="/profile" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
-                         <UserEdit size="18" color="#d71414" variant="Bulk" />
-                         <Typography variant="body2" fontWeight="700">โปรไฟล์ของฉัน</Typography>
-                      </MenuItem>
-                      <MenuItem onClick={handleCloseUserMenu} component={Link} href="/orders" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
-                         <ClipboardText size="18" color="#d71414" variant="Bulk" />
-                         <Typography variant="body2" fontWeight="700">ประวัติการสั่งซื้อ</Typography>
-                      </MenuItem>
-                      <MenuItem onClick={handleCloseUserMenu} component={Link} href="/wishlist" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
-                         <Heart size="18" color="#d71414" variant="Bulk" />
-                         <Typography variant="body2" fontWeight="700">สินค้าที่ชอบ</Typography>
-                      </MenuItem>
-                      {(session.user as any)?.role === 'ADMIN' && (
-                        <MenuItem onClick={handleCloseUserMenu} component={Link} href="/admin/users" sx={{ borderRadius: 2, gap: 1.5, py: 1, bgcolor: 'grey.50' }}>
-                          <Setting2 size="18" color="#666" variant="Bulk" />
-                          <Typography variant="body2" fontWeight="800">แผงควบคุมแอดมิน</Typography>
-                        </MenuItem>
+                      {({ TransitionProps }) => (
+                        <Grow {...TransitionProps} style={{ transformOrigin: 'right top' }}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              mt: 1.5,
+                              minWidth: 200,
+                              borderRadius: 3,
+                              boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                              border: '1px solid',
+                              borderColor: 'grey.100',
+                              p: 1,
+                              overflow: 'visible',
+                            }}
+                          >
+                            <ClickAwayListener onClickAway={handleCloseMenu}>
+                              <Box>
+                                <MenuItem onClick={handleCloseMenu} component={Link} href="/profile" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
+                                   <UserEdit size="18" color="#d71414" variant="Bulk" />
+                                   <Typography variant="body2" fontWeight="700">โปรไฟล์ของฉัน</Typography>
+                                </MenuItem>
+                                <MenuItem onClick={handleCloseMenu} component={Link} href="/orders" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
+                                   <ClipboardText size="18" color="#d71414" variant="Bulk" />
+                                   <Typography variant="body2" fontWeight="700">ประวัติการสั่งซื้อ</Typography>
+                                </MenuItem>
+                                <MenuItem onClick={handleCloseMenu} component={Link} href="/wishlist" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
+                                   <Heart size="18" color="#d71414" variant="Bulk" />
+                                   <Typography variant="body2" fontWeight="700">สินค้าที่ชอบ</Typography>
+                                </MenuItem>
+                                {(session.user as any)?.role === 'ADMIN' && (
+                                  <MenuItem onClick={handleCloseMenu} component={Link} href="/admin/users" sx={{ borderRadius: 2, gap: 1.5, py: 1, bgcolor: 'grey.50' }}>
+                                    <Setting2 size="18" color="#666" variant="Bulk" />
+                                    <Typography variant="body2" fontWeight="800">แผงควบคุมแอดมิน</Typography>
+                                  </MenuItem>
+                                )}
+                                <Divider sx={{ my: 1, borderColor: 'grey.50' }} />
+                                <MenuItem onClick={() => { handleCloseMenu(); signOut(); }} sx={{ borderRadius: 2, gap: 1.5, py: 1, color: 'error.main' }}>
+                                    <Logout size="18" variant="Bulk" color="currentColor" />
+                                    <Typography variant="body2" fontWeight="700">ออกจากระบบ</Typography>
+                                </MenuItem>
+                              </Box>
+                            </ClickAwayListener>
+                          </Paper>
+                        </Grow>
                       )}
-                      <Divider sx={{ my: 1, borderColor: 'grey.50' }} />
-                      <MenuItem onClick={() => { handleCloseUserMenu(); signOut(); }} sx={{ borderRadius: 2, gap: 1.5, py: 1, color: 'error.main' }}>
-                          <Logout size="18" variant="Bulk" color="currentColor" />
-                          <Typography variant="body2" fontWeight="700">ออกจากระบบ</Typography>
-                      </MenuItem>
-                    </Menu>
+                    </Popper>
                   </>
                 ) : (
                   <Link href="/login" style={{ textDecoration: 'none' }}>
@@ -181,8 +242,9 @@ export default function Header() {
               </Box>
 
               <Badge
-                badgeContent={0}
+                badgeContent={totalItems}
                 showZero
+                onClick={openDrawer}
                 sx={{
                   "& .MuiBadge-badge": {
                     bgcolor: "#FFF",
@@ -194,7 +256,9 @@ export default function Header() {
                     boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
                   },
                   cursor: 'pointer',
-                  "&:hover": { opacity: 0.8 }
+                  "&:hover": { opacity: 0.8 },
+                  transition: 'transform 0.2s',
+                  "&:active": { transform: 'scale(0.9)' }
                 }}
               >
                 <ShoppingCart size="22" variant="Bulk" color="#FFF" />

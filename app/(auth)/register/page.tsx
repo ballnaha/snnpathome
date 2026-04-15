@@ -137,7 +137,7 @@ export default function RegisterPage() {
           <Box sx={{ bgcolor: "primary.main", py: 3, textAlign: "center", px: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                 <Link href="/">
-                  <Image src="/images/logo.png" alt="SNNP Logo" width={110} height={35} style={{ objectFit: 'contain' }} />
+                  <Image src="/images/logo.png" alt="SNNP Logo" width={110} height={35} style={{ objectFit: 'contain', height: 'auto' }} />
                 </Link>
               </Box>
               <Typography variant="subtitle1" fontWeight="800" mt={1.5} sx={{ color: "white", fontSize: "1.1rem" }}>

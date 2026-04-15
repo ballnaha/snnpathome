@@ -29,9 +29,13 @@ import {
   Heart
 } from "iconsax-react";
 import ProductCard from "@/components/ProductCard";
+import { useCart } from "@/contexts/CartContext";
+import { useSnackbar } from "@/components/SnackbarProvider";
 
 export default function ProductDetailClient({ slug }: { slug: string }) {
   const [quantity, setQuantity] = React.useState(1);
+  const { addItem } = useCart();
+  const { showSnackbar } = useSnackbar();
   
   // Decoding slug for UI (not 100% accurate but for mock visual)
   const productName = decodeURIComponent(slug).replace(/-/g, ' ');
@@ -48,6 +52,26 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     if (type === 'add') setQuantity(q => q + 1);
     else if (quantity > 1) setQuantity(q => q - 1);
   }
+
+  // Mock product data for cart
+  const currentProduct = {
+    id: slug,
+    name: productName,
+    price: 25,
+    image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/bento-red.png",
+    slug: slug,
+  };
+
+  const handleAddToCart = () => {
+    addItem(currentProduct, quantity);
+    showSnackbar(`เพิ่ม "${productName}" จำนวน ${quantity} ชิ้น ลงตะกร้าแล้ว`, "success");
+  };
+
+  const handleBuyNow = () => {
+    addItem(currentProduct, quantity);
+    // In the future, navigate to checkout
+    showSnackbar(`เพิ่ม "${productName}" ลงตะกร้าแล้ว — พร้อมสั่งซื้อ!`, "success");
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#fdfdfd" }}>
@@ -135,6 +159,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                     <Button 
                       variant="outlined" 
                       fullWidth 
+                      onClick={handleAddToCart}
                       startIcon={<ShoppingCart variant="Bold" color="#d71414" />}
                       sx={{ py: 2, borderRadius: 15, fontWeight: 900, color: "primary.main", borderColor: "primary.main", borderWidth: 2, "&:hover": { borderWidth: 2 } }}
                     >
@@ -143,6 +168,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                     <Button 
                       variant="contained" 
                       fullWidth 
+                      onClick={handleBuyNow}
                       startIcon={<Flash variant="Bold" color="#FFF" />}
                       sx={{ py: 2, borderRadius: 15, fontWeight: 900, bgcolor: "primary.main", "&:hover": { bgcolor: "#cc0000" } }}
                     >
