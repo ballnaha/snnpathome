@@ -36,6 +36,12 @@ export async function POST(req: Request) {
       }
     });
 
+    // Link any guest orders placed with this email
+    await prisma.order.updateMany({
+      where: { email, userId: null },
+      data: { userId: user.id },
+    });
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 

@@ -1,34 +1,32 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardMedia, Typography, Box, IconButton } from "@mui/material";
+import { Card, CardContent, CardMedia, Typography, Box, Stack } from "@mui/material";
 import Link from "next/link";
-import { ShoppingCart } from "iconsax-react";
-import { useCart } from "@/contexts/CartContext";
-import { useSnackbar } from "@/components/SnackbarProvider";
 
 interface ProductCardProps {
   id: string;
-  slug?: string; // Optional slug for clean URLs
+  slug?: string;
   name: string;
   price: number;
+  originalPrice?: number;
   image: string;
   category?: string;
-  bestSeller?: boolean;
+  isBestSeller?: boolean;
+  createdAt?: string | Date | null;
+  unitsPerCase?: number | null;
+  unitLabel?: string | null;
+  caseLabel?: string | null;
 }
 
-export default function ProductCard({ id, name, price, image, slug, bestSeller }: ProductCardProps) {
-  // Fallback slug generation if not provided
-  const productSlug = slug || encodeURIComponent(name.replace(/\s+/g, '-'));
-  const { addItem } = useCart();
-  const { showSnackbar } = useSnackbar();
+const NEW_DAYS = 30;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addItem({ id, name, price, image, slug: productSlug });
-    showSnackbar(`เพิ่ม "${name}" ลงตะกร้าแล้ว`, "success");
-  };
+export default function ProductCard({ id, name, price, originalPrice, image, slug, isBestSeller, createdAt }: ProductCardProps) {
+  const productSlug = slug || encodeURIComponent(name.replace(/\s+/g, '-'));
+
+  const isNew = createdAt
+    ? (Date.now() - new Date(createdAt).getTime()) / 86400000 <= NEW_DAYS
+    : false;
 
   return (
     <Link href={`/product/${productSlug}`} style={{ textDecoration: 'none' }}>
@@ -43,8 +41,7 @@ export default function ProductCard({ id, name, price, image, slug, bestSeller }
           "&:hover": { 
             transform: "translateY(-4px)", 
             borderColor: "primary.main",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.05)",
-            "& .cart-btn": { opacity: 1, transform: "scale(1)" }
+            boxShadow: "0 10px 30px rgba(0,0,0,0.05)"
           },
           cursor: "pointer",
           position: 'relative',
@@ -53,55 +50,28 @@ export default function ProductCard({ id, name, price, image, slug, bestSeller }
           flexDirection: 'column'
         }}
       >
-        {bestSeller && (
-          <Box 
-            sx={{ 
-              position: 'absolute', 
-              top: 10, 
-              left: 10, 
-              bgcolor: 'primary.main', 
-              color: 'white', 
-              px: 1.5, 
-              py: 0.5, 
-              borderRadius: 2, 
-              zIndex: 10,
-              fontSize: '10px',
-              fontWeight: 700
-            }}
-          >
-            BEST SELLER
-          </Box>
+        {/* Badges top-left */}
+        {(isBestSeller || isNew) && (
+          <Stack direction="column" gap={0.5} sx={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+            {isBestSeller && (
+              <Box sx={{ bgcolor: '#f59e0b', color: 'white', px: 1.5, py: 0.5, borderRadius: 2, fontSize: '10px', fontWeight: 700, lineHeight: 1.4 }}>
+                BEST SELLER
+              </Box>
+            )}
+            {isNew && (
+              <Box sx={{ bgcolor: '#22c55e', color: 'white', px: 1.5, py: 0.5, borderRadius: 2, fontSize: '10px', fontWeight: 700, lineHeight: 1.4 }}>
+                NEW
+              </Box>
+            )}
+          </Stack>
         )}
-
-        {/* Add to Cart Button — appears on hover */}
-        <IconButton
-          className="cart-btn"
-          onClick={handleAddToCart}
-          sx={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            zIndex: 10,
-            bgcolor: 'primary.main',
-            color: 'white',
-            opacity: 0,
-            transform: 'scale(0.8)',
-            transition: '0.25s ease',
-            boxShadow: '0 4px 12px rgba(215,20,20,0.3)',
-            width: 36,
-            height: 36,
-            "&:hover": { bgcolor: '#cc0000', transform: 'scale(1.1) !important' },
-          }}
-        >
-          <ShoppingCart size="18" variant="Bold" color="#FFF" />
-        </IconButton>
 
         <CardMedia
           component="img"
-          height="220"
+          height="260"
           image={image}
           alt={name}
-          sx={{ objectFit: 'contain', p: 3, transition: '0.3s', "&:hover": { transform: 'scale(1.05)' } }}
+          sx={{ objectFit: 'contain', p: 2, transition: '0.3s', "&:hover": { transform: 'scale(1.05)' } }}
         />
         <CardContent sx={{ textAlign: "center", pb: 3, pt: 1, flexGrow: 1 }}>
           <Typography 
@@ -121,6 +91,11 @@ export default function ProductCard({ id, name, price, image, slug, bestSeller }
           >
             {name}
           </Typography>
+          {originalPrice && (
+            <Typography variant="body2" color="text.disabled" sx={{ textDecoration: 'line-through', fontWeight: 600 }}>
+              ฿ {originalPrice.toLocaleString()}
+            </Typography>
+          )}
           <Typography variant="h6" fontWeight="900" color="primary.main">
             ฿ {price.toLocaleString()}
           </Typography>

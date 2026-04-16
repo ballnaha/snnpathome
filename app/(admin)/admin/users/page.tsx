@@ -47,7 +47,7 @@ export default async function AdminUsersPage() {
         </Box>
         <Button 
           variant="contained" 
-          startIcon={<UserAdd size="20" variant="Bold" />}
+          startIcon={<UserAdd size="20" variant="Bold" color="white" />}
           sx={{ borderRadius: 3, fontWeight: 800, px: 3, py: 1.2, bgcolor: 'primary.main', boxShadow: '0 8px 20px rgba(215, 20, 20, 0.2)' }}
         >
           เพิ่มผู้ใช้งาน
@@ -107,7 +107,7 @@ export default async function AdminUsersPage() {
                   <Chip 
                     label={user.role} 
                     size="small" 
-                    icon={user.role === 'ADMIN' ? <ShieldTick size="14" variant="Bold" /> : undefined}
+                    icon={user.role === 'ADMIN' ? <ShieldTick size="14" variant="Bold" color="#d71414" /> : undefined}
                     sx={{ 
                       fontWeight: 800, 
                       fontSize: '0.7rem',
@@ -132,8 +132,8 @@ export default async function AdminUsersPage() {
                 </TableCell>
                 <TableCell align="right">
                   <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                     <IconButton size="small" sx={{ color: 'primary.main', bgcolor: 'primary.50' }}><Edit2 size="18" /></IconButton>
-                     <IconButton size="small" sx={{ color: 'error.main', bgcolor: 'error.50' }}><Trash size="18" /></IconButton>
+                     <IconButton size="small" sx={{ color: 'primary.main', bgcolor: 'primary.50' }}><Edit2 size="18" variant="Bold" color="primary.main" /></IconButton>
+                     <IconButton size="small" sx={{ color: 'error.main', bgcolor: 'error.50' }}><Trash size="18" variant="Bold" color="error.main" /></IconButton>
                   </Stack>
                 </TableCell>
               </TableRow>

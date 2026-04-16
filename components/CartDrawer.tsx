@@ -269,7 +269,7 @@ export default function CartDrawer() {
                           "&:hover": { color: "error.main" },
                         }}
                       >
-                        <Trash size="18" variant="Bold" />
+                        <Trash size="18" variant="Bold" color="currentColor" />
                       </IconButton>
                     </Stack>
                   </Box>
@@ -286,7 +286,7 @@ export default function CartDrawer() {
                 <Button
                   size="small"
                   onClick={clearCart}
-                  startIcon={<Trash size="14" variant="Bold" />}
+                  startIcon={<Trash size="14" variant="Bold" color="currentColor" />}
                   sx={{
                     color: "grey.400",
                     fontWeight: 700,
@@ -314,7 +314,6 @@ export default function CartDrawer() {
           }}
         >
           <Stack spacing={2}>
-            {/* Price Breakdown */}
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="body2" color="text.secondary" fontWeight="500">
                 สินค้า ({totalItems} ชิ้น)
@@ -323,29 +322,8 @@ export default function CartDrawer() {
                 ฿{totalPrice.toLocaleString()}
               </Typography>
             </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary" fontWeight="500">
-                ค่าจัดส่ง
-              </Typography>
-              <Typography variant="body2" fontWeight="700" color="success.main">
-                ฟรี
-              </Typography>
-            </Stack>
 
             <Divider />
-
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="subtitle1" fontWeight="900">
-                ยอดรวมทั้งหมด
-              </Typography>
-              <Typography
-                variant="h5"
-                fontWeight="900"
-                color="primary.main"
-              >
-                ฿{totalPrice.toLocaleString()}
-              </Typography>
-            </Stack>
 
             {/* Action Buttons */}
             <Link href="/checkout" style={{ textDecoration: 'none', width: '100%' }}>

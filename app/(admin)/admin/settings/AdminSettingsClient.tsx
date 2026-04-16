@@ -1,0 +1,264 @@
+"use client";
+
+import React from "react";
+import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Facebook, Instagram, TickCircle, Video, CloseCircle, MessageQuestion } from "iconsax-react";
+import { useSnackbar } from "@/components/SnackbarProvider";
+
+const SOCIAL_KEYS = ["facebookUrl", "instagramUrl", "youtubeUrl", "lineUrl"] as const;
+type SocialKey = (typeof SOCIAL_KEYS)[number];
+
+interface AdminSettingsClientProps {
+  initialSettings: {
+    facebookUrl: string | null;
+    instagramUrl: string | null;
+    youtubeUrl: string | null;
+    lineUrl: string | null;
+    callCenterPhone: string | null;
+    lineOfficial: string | null;
+    contactEmail: string | null;
+    serviceHours: string | null;
+    bankAccountInfo: string | null;
+    companyAddress: string | null;
+  };
+  updatedAt: string;
+}
+
+export default function AdminSettingsClient({ initialSettings, updatedAt }: AdminSettingsClientProps) {
+  const { showSnackbar } = useSnackbar();
+  const [saving, setSaving] = React.useState(false);
+  const [form, setForm] = React.useState({
+    facebookUrl: initialSettings.facebookUrl ?? "",
+    instagramUrl: initialSettings.instagramUrl ?? "",
+    youtubeUrl: initialSettings.youtubeUrl ?? "",
+    lineUrl: initialSettings.lineUrl ?? "",
+    callCenterPhone: initialSettings.callCenterPhone ?? "",
+    lineOfficial: initialSettings.lineOfficial ?? "",
+    contactEmail: initialSettings.contactEmail ?? "",
+    serviceHours: initialSettings.serviceHours ?? "",
+    bankAccountInfo: initialSettings.bankAccountInfo ?? "",
+    companyAddress: initialSettings.companyAddress ?? "",
+  });
+
+  const errors = React.useMemo(() => {
+    const nextErrors: Record<SocialKey, string> = {
+      facebookUrl: "",
+      instagramUrl: "",
+      youtubeUrl: "",
+      lineUrl: "",
+    };
+
+    SOCIAL_KEYS.forEach((key) => {
+      const value = form[key].trim();
+      if (!value) return;
+
+      try {
+        const url = new URL(value);
+        if (!["http:", "https:"].includes(url.protocol)) {
+          nextErrors[key] = "URL ต้องขึ้นต้นด้วย http:// หรือ https://";
+        }
+      } catch {
+        nextErrors[key] = "รูปแบบ URL ไม่ถูกต้อง";
+      }
+    });
+
+    return nextErrors;
+  }, [form]);
+
+  const hasErrors = Object.values(errors).some(Boolean);
+
+  const handleChange = (key: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    if (hasErrors) {
+      showSnackbar("กรุณาแก้ไข URL ที่ไม่ถูกต้องก่อนบันทึก", "error");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!response.ok) {
+        showSnackbar("บันทึกการตั้งค่าไม่สำเร็จ", "error");
+        return;
+      }
+
+      showSnackbar("บันทึกการตั้งค่าเรียบร้อย", "success");
+    } catch {
+      showSnackbar("บันทึกการตั้งค่าไม่สำเร็จ", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Paper elevation={0} sx={{ borderRadius: 3.5, border: "1px solid", borderColor: "grey.200", overflow: "hidden" }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} sx={{ px: 3, py: 2.2, borderBottom: "1px solid", borderColor: "grey.100", bgcolor: "grey.50" }}>
+        <Stack direction="row" alignItems="center" gap={1.5}>
+        <MessageQuestion size="20" color="#d71414" variant="Bold" />
+        <Box>
+            <Typography fontWeight={900}>ตั้งค่าข้อมูลสำหรับแสดงบนเว็บไซต์</Typography>
+            <Typography variant="caption" color="text.secondary">จัดการลิงก์โซเชียล ช่องทางติดต่อ บัญชีธนาคาร และที่อยู่</Typography>
+          </Box>
+        </Stack>
+        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+          อัปเดตล่าสุด {new Date(updatedAt).toLocaleString("th-TH")}
+        </Typography>
+      </Stack>
+
+      <Stack spacing={3} sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ border: "1px solid", borderColor: "grey.200", borderRadius: 3, p: 2.2 }}>
+          <Typography variant="subtitle2" fontWeight={900} mb={2}>Social Media URLs</Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+            <TextField
+              label="Facebook URL"
+              fullWidth
+              value={form.facebookUrl}
+              onChange={(event) => handleChange("facebookUrl", event.target.value)}
+              placeholder="https://facebook.com/your-page"
+              error={!!errors.facebookUrl}
+              helperText={errors.facebookUrl || "ลิงก์เพจ Facebook ที่จะใช้บนหน้าเว็บ"}
+              InputProps={{ startAdornment: <InputAdornment position="start"><Facebook size="18" color="#1877F2" /></InputAdornment> }}
+            />
+            <TextField
+              label="Instagram URL"
+              fullWidth
+              value={form.instagramUrl}
+              onChange={(event) => handleChange("instagramUrl", event.target.value)}
+              placeholder="https://instagram.com/your-account"
+              error={!!errors.instagramUrl}
+              helperText={errors.instagramUrl || "ลิงก์บัญชี Instagram ที่จะใช้บนหน้าเว็บ"}
+              InputProps={{ startAdornment: <InputAdornment position="start"><Instagram size="18" color="#E4405F" /></InputAdornment> }}
+            />
+            <TextField
+              label="YouTube URL"
+              fullWidth
+              value={form.youtubeUrl}
+              onChange={(event) => handleChange("youtubeUrl", event.target.value)}
+              placeholder="https://youtube.com/@your-channel"
+              error={!!errors.youtubeUrl}
+              helperText={errors.youtubeUrl || "ลิงก์ช่อง YouTube ของแบรนด์หรือบริษัท"}
+              InputProps={{ startAdornment: <InputAdornment position="start"><Video size="18" color="#FF0000" /></InputAdornment> }}
+            />
+            <TextField
+              label="LINE URL"
+              fullWidth
+              value={form.lineUrl}
+              onChange={(event) => handleChange("lineUrl", event.target.value)}
+              placeholder="https://line.me/R/ti/p/@your-line"
+              error={!!errors.lineUrl}
+              helperText={errors.lineUrl || "ลิงก์ LINE OA หรือแชทที่ใช้ให้ลูกค้าติดต่อ"}
+              InputProps={{ startAdornment: <InputAdornment position="start"><MessageQuestion size="18" color="#06C755" /></InputAdornment> }}
+            />
+          </Box>
+        </Box>
+
+        <Box sx={{ border: "1px solid", borderColor: "grey.200", borderRadius: 3, p: 2.2 }}>
+          <Typography variant="subtitle2" fontWeight={900} mb={2}>ข้อมูลสอบถามเพิ่มเติม</Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+            <TextField
+              label="Call Center โทร."
+              fullWidth
+              value={form.callCenterPhone}
+              onChange={(event) => handleChange("callCenterPhone", event.target.value)}
+              placeholder="089-306-4444"
+              helperText="เช่น 089-306-4444"
+            />
+            <TextField
+              label="Line Official"
+              fullWidth
+              value={form.lineOfficial}
+              onChange={(event) => handleChange("lineOfficial", event.target.value)}
+              placeholder="@snnpathome"
+              helperText="เช่น @snnpathome"
+            />
+            <TextField
+              label="E-mail"
+              fullWidth
+              value={form.contactEmail}
+              onChange={(event) => handleChange("contactEmail", event.target.value)}
+              placeholder="Snnpathome@gmail.com"
+              helperText="อีเมลสำหรับลูกค้าติดต่อสอบถาม"
+            />
+            <TextField
+              label="เวลาเปิดบริการ"
+              fullWidth
+              value={form.serviceHours}
+              onChange={(event) => handleChange("serviceHours", event.target.value)}
+              placeholder="จันทร์-ศุกร์ เวลา 09.00 - 17.00 น."
+              helperText="ระบุวันและช่วงเวลาให้บริการ"
+            />
+          </Box>
+        </Box>
+
+        <Box sx={{ border: "1px solid", borderColor: "grey.200", borderRadius: 3, p: 2.2 }}>
+          <Typography variant="subtitle2" fontWeight={900} mb={2}>ข้อมูลธุรกิจ</Typography>
+          <Stack spacing={2}>
+            <TextField
+              label="บัญชีธนาคาร"
+              fullWidth
+              multiline
+              rows={4}
+              value={form.bankAccountInfo}
+              onChange={(event) => handleChange("bankAccountInfo", event.target.value)}
+              placeholder="ชื่อบัญชี / ธนาคาร / เลขบัญชี"
+            />
+            <TextField
+              label="ที่อยู่"
+              fullWidth
+              multiline
+              rows={4}
+              value={form.companyAddress}
+              onChange={(event) => handleChange("companyAddress", event.target.value)}
+              placeholder="ที่อยู่บริษัทหรือที่อยู่สำหรับติดต่อ"
+            />
+          </Stack>
+        </Box>
+      </Stack>
+
+      <Divider />
+      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2} sx={{ px: { xs: 2, md: 3 }, py: 2, bgcolor: "grey.50", position: "sticky", bottom: 0, zIndex: 5 }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+          บันทึกการเปลี่ยนแปลงเพื่อให้อัปเดตบนหน้าเว็บไซต์ทันที
+        </Typography>
+        <Stack direction="row" justifyContent="flex-end" spacing={1.5}>
+          <Button
+            variant="outlined"
+            onClick={() => setForm({
+              facebookUrl: initialSettings.facebookUrl ?? "",
+              instagramUrl: initialSettings.instagramUrl ?? "",
+              youtubeUrl: initialSettings.youtubeUrl ?? "",
+              lineUrl: initialSettings.lineUrl ?? "",
+              callCenterPhone: initialSettings.callCenterPhone ?? "",
+              lineOfficial: initialSettings.lineOfficial ?? "",
+              contactEmail: initialSettings.contactEmail ?? "",
+              serviceHours: initialSettings.serviceHours ?? "",
+              bankAccountInfo: initialSettings.bankAccountInfo ?? "",
+              companyAddress: initialSettings.companyAddress ?? "",
+            })}
+            startIcon={<CloseCircle size="16" color="currentColor" />}
+            sx={{ fontWeight: 700 }}
+          >
+            รีเซ็ต
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || hasErrors}
+            startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <TickCircle size="16" color="white" />}
+            sx={{ fontWeight: 800, borderRadius: 2.5 }}
+          >
+            บันทึก
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}

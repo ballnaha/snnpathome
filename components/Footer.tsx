@@ -1,18 +1,20 @@
-"use client";
-
 import React from "react";
 import { Box, Container, Stack, Typography } from "@mui/material";
 import { Facebook, Instagram, Youtube } from "iconsax-react";
+import prisma from "@/lib/prisma";
 
-export default function Footer() {
+export default async function Footer() {
+  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
+
   return (
     <Box
       component="footer"
       sx={{
-        bgcolor: "#0b0b0b", // Deeper black for a subtle finish
+        bgcolor: "#0b0b0b",
         color: "white",
-        py: 3, // Minimal height as requested
-        borderTop: "1px solid rgba(255, 255, 255, 0.05)"
+        py: 3,
+        borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+        display: { xs: "none", md: "block" },
       }}
     >
       <Container maxWidth="lg">
@@ -33,9 +35,9 @@ export default function Footer() {
 
           {/* Clean Social Icons */}
           <Stack direction="row" spacing={3}>
-            <SocialIcon icon={<Facebook variant="Bold" size={20} color="#FFF" />} />
-            <SocialIcon icon={<Instagram variant="Bold" size={20} color="#FFF" />} />
-            <SocialIcon icon={<Youtube variant="Bold" size={20} color="#FFF" />} />
+            <SocialIcon href={settings?.facebookUrl} icon={<Facebook variant="Bold" size={20} color="#FFF" />} />
+            <SocialIcon href={settings?.instagramUrl} icon={<Instagram variant="Bold" size={20} color="#FFF" />} />
+            <SocialIcon href={settings?.youtubeUrl} icon={<Youtube variant="Bold" size={20} color="#FFF" />} />
           </Stack>
         </Stack>
       </Container>
@@ -43,35 +45,22 @@ export default function Footer() {
   );
 }
 
-function SocialIcon({ icon }: { icon: React.ReactNode }) {
+function SocialIcon({ icon, href }: { icon: React.ReactNode; href?: string | null }) {
   return (
     <Box
+      component={href ? "a" : "span"}
+      href={href ?? undefined}
+      target={href ? "_blank" : undefined}
+      rel={href ? "noreferrer" : undefined}
       sx={{
         color: "grey.700",
-        cursor: "pointer",
+        cursor: href ? "pointer" : "default",
+        opacity: href ? 1 : 0.45,
         transition: "0.2s",
         "&:hover": { color: "primary.main" }
       }}
     >
       {icon}
     </Box>
-  );
-}
-
-function FooterLink({ children }: { children: React.ReactNode }) {
-  return (
-    <Typography
-      variant="caption"
-      sx={{
-        color: "grey.600",
-        fontWeight: 700,
-        letterSpacing: 1,
-        cursor: "pointer",
-        transition: "0.2s",
-        "&:hover": { color: "white" }
-      }}
-    >
-      {children}
-    </Typography>
   );
 }

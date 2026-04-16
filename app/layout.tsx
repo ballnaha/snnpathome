@@ -26,7 +26,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession(authOptions);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch {
+    // Stale or invalid JWT cookie (e.g. secret rotation) — treat as unauthenticated
+  }
 
   return (
     <html lang="th" className="h-full antialiased">

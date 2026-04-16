@@ -8,8 +8,8 @@ export default function Hero() {
     <Box 
       sx={{ 
         width: "100%", 
-        // Replacement: Setting exact viewport height minus specific header height
-        height: "calc(100vh - 110px)", 
+        height: { xs: "45vw", sm: "calc(100vh - 110px)" },
+        minHeight: { xs: 200, sm: 300 },
         bgcolor: "#f0f0f0", 
         overflow: "hidden", 
         position: "relative",

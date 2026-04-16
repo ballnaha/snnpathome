@@ -2,33 +2,15 @@ import React from "react";
 import { Box, Container, Typography, Stack } from "@mui/material";
 import { Danger } from "iconsax-react";
 import NotFoundActions from "./NotFoundActions";
-import Link from "next/link";
-import Image from "next/image";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import CartDrawer from "@/components/CartDrawer";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 export default function NotFound() {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Simple static header — no interactive dropdown to avoid stale-state
-          issues when the browser restores the previous page from bfcache */}
-      <Box
-        component="header"
-        sx={{
-          bgcolor: "primary.main",
-          color: "white",
-          py: 1.5,
-          textAlign: "center",
-        }}
-      >
-        <Link href="/" style={{ display: "inline-flex", alignItems: "center" }}>
-          <Image
-            src="/images/logo.png"
-            alt="SNNP Logo"
-            width={100}
-            height={32}
-            style={{ objectFit: "contain", height: "auto" }}
-          />
-        </Link>
-      </Box>
+      <Header />
 
       <Box
         component="main"
@@ -77,6 +59,10 @@ export default function NotFound() {
           </Stack>
         </Container>
       </Box>
+
+      <Footer />
+      <CartDrawer />
+      <MobileBottomNav />
     </Box>
   );
 }

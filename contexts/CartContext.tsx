@@ -77,7 +77,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { ...newItem, quantity }];
     });
-    setIsDrawerOpen(true);
   }, []);
 
   const removeItem = useCallback((id: string) => {

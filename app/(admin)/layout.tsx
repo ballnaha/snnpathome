@@ -36,7 +36,8 @@ import {
   SearchNormal1,
   ArrowDown2,
   ProfileCircle,
-  MagicStar
+  MagicStar,
+  Truck,
 } from "iconsax-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -65,13 +66,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setAnchorEl(null);
   };
 
-  const menuItems = [
-    { text: "แดชบอร์ด", icon: <Category size="22" />, path: "/admin" },
-    { text: "จัดการผู้ใช้งาน", icon: <User size="22" />, path: "/admin/users" },
-    { text: "จัดการสินค้า", icon: <Shop size="22" />, path: "/admin/products" },
-    { text: "แบรนด์สินค้า", icon: <BagHappy size="22" />, path: "/admin/brands" },
-    { text: "รายงานการขาย", icon: <Chart size="22" />, path: "/admin/reports" },
-    { text: "ตั้งค่าระบบ", icon: <Setting2 size="22" />, path: "/admin/settings" },
+  const menuGroups = [
+    {
+      label: null,
+      items: [
+        { text: "แดชบอร์ด", icon: <Category size="22" color="currentColor" />, path: "/admin" },
+      ],
+    },
+    {
+      label: "จัดการร้านค้า",
+      items: [
+        { text: "จัดการสินค้า", icon: <Shop size="22" color="currentColor" />, path: "/admin/products" },
+        { text: "แบรนด์สินค้า", icon: <BagHappy size="22" color="currentColor" />, path: "/admin/brands" },
+        { text: "รูปแบบการจัดส่ง", icon: <Truck size="22" color="currentColor" />, path: "/admin/shipping-methods" },
+      ],
+    },
+    {
+      label: "สมาชิก",
+      items: [
+        { text: "จัดการผู้ใช้งาน", icon: <User size="22" color="currentColor" />, path: "/admin/users" },
+      ],
+    },
+    {
+      label: "รายงาน & ตั้งค่า",
+      items: [
+        { text: "รายงานการขาย", icon: <Chart size="22" color="currentColor" />, path: "/admin/reports" },
+        { text: "ตั้งค่าระบบ", icon: <Setting2 size="22" color="currentColor" />, path: "/admin/settings" },
+      ],
+    },
   ];
 
   const drawerContent = (
@@ -81,36 +103,49 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
          <Typography variant="overline" sx={{ fontWeight: 800, color: 'primary.main', borderLeft: '1px solid #eee', pl: 1.5, lineHeight: 1 }}>Admin</Typography>
       </Box>
       <Divider sx={{ borderColor: 'grey.50' }} />
-      <Box sx={{ flexGrow: 1, p: 2 }}>
-        <List sx={{ p: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {menuItems.map((item) => {
-            const isActive = pathname === item.path;
-            return (
-              <ListItem key={item.text} disablePadding>
-                <ListItemButton 
-                  component={Link} 
-                  href={item.path}
-                  onClick={() => isMobile && setMobileOpen(false)}
-                  sx={{ 
-                    borderRadius: 3, 
-                    py: 1.2,
-                    bgcolor: isActive ? "primary.main" : "transparent",
-                    color: isActive ? "white" : "text.secondary",
-                    "&:hover": { 
-                      bgcolor: isActive ? "primary.main" : "grey.100",
-                      color: isActive ? "white" : "primary.main"
-                    }
-                  }}
-                >
-                  <ListItemIcon sx={{ color: "inherit", minWidth: 40 }}>
-                    {React.cloneElement(item.icon as React.ReactElement<any>, { variant: isActive ? "Bold" : "Linear" })}
-                  </ListItemIcon>
-                  <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: isActive ? 800 : 600, fontSize: '0.9rem' }} />
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
+      <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto' }}>
+        {menuGroups.map((group, gi) => (
+          <Box key={gi} sx={{ mb: 1 }}>
+            {group.label && (
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 800, color: 'grey.400', letterSpacing: 1, px: 1.5, display: 'block', mb: 0.5, textTransform: 'uppercase' }}
+              >
+                {group.label}
+              </Typography>
+            )}
+            <List sx={{ p: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {group.items.map((item) => {
+                const isActive = pathname === item.path;
+                return (
+                  <ListItem key={item.text} disablePadding>
+                    <ListItemButton
+                      component={Link}
+                      href={item.path}
+                      onClick={() => isMobile && setMobileOpen(false)}
+                      sx={{
+                        borderRadius: 3,
+                        py: 1.2,
+                        bgcolor: isActive ? "primary.main" : "transparent",
+                        color: isActive ? "white" : "text.secondary",
+                        "&:hover": {
+                          bgcolor: isActive ? "primary.main" : "grey.100",
+                          color: isActive ? "white" : "primary.main"
+                        }
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: "inherit", minWidth: 40 }}>
+                        {React.cloneElement(item.icon as React.ReactElement<any>, { variant: isActive ? "Bold" : "Linear" })}
+                      </ListItemIcon>
+                      <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: isActive ? 800 : 600, fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })}
+            </List>
+            {gi < menuGroups.length - 1 && <Divider sx={{ borderColor: 'grey.100', mt: 1 }} />}
+          </Box>
+        ))}
       </Box>
       <Divider sx={{ borderColor: 'grey.50' }} />
       <Box sx={{ p: 3 }}>
@@ -119,7 +154,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           variant="outlined" 
           color="inherit" 
           onClick={() => signOut()}
-          startIcon={<LogoutCurve size="18" />}
+          startIcon={<LogoutCurve size="18" color="currentColor" />}
           sx={{ borderRadius: 3, py: 1, fontWeight: 700, borderColor: 'grey.200', color: 'grey.600' }}
         >
           ออกจากระบบ
@@ -150,7 +185,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 onClick={handleDrawerToggle}
                 sx={{ mr: 2, display: { lg: 'none' } }}
             >
-                <HambergerMenu size="24" />
+                <HambergerMenu size="24" color="currentColor" />
             </IconButton>
             <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', bgcolor: 'grey.50', px: 2, py: 0.8, borderRadius: 2, gap: 1 }}>
                <SearchNormal1 size="18" color="#999" />
@@ -159,7 +194,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Stack>
 
           <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
-             <IconButton sx={{ bgcolor: 'grey.50' }}><Notification size="22" /></IconButton>
+             <IconButton sx={{ bgcolor: 'grey.50' }}><Notification size="22" color="#666" /></IconButton>
              <Divider orientation="vertical" flexItem sx={{ height: 24, alignSelf: 'center' }} />
              
              {/* Professional User Toggle */}

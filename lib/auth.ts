@@ -53,6 +53,16 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
+    async signIn({ user }) {
+      // Link any guest orders to this account on every sign-in
+      if (user?.id && user?.email) {
+        await prisma.order.updateMany({
+          where: { email: user.email, userId: null },
+          data: { userId: user.id },
+        }).catch(() => {}); // non-blocking, best-effort
+      }
+      return true;
+    },
     async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id;

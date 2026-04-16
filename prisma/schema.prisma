@@ -47,12 +47,18 @@ model User {
   image         String?
   password      String?   // Added for credentials login
   phone         String?   // Added for user contact
+  address       String?   @db.Text
+  subdistrict   String?
+  district      String?
+  province      String?
+  postcode      String?
   role          String    @default("USER") // ADMIN, USER
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   accounts      Account[]
   sessions      Session[]
+  orders        Order[]
 }
 
 model VerificationToken {
@@ -87,11 +93,116 @@ model Product {
   image        String?  @db.Text
   stock        Int      @default(0)
   isActive     Boolean  @default(true)
+  isBestSeller Boolean  @default(false)
+  unitsPerCase Int?     // จำนวนหน่วยต่อลัง เช่น 24
+  unitLabel    String?  // ชื่อหน่วยย่อย เช่น "ซอง"
+  caseLabel    String?  // ชื่อหน่วยหลัก เช่น "ลัง"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   brandId      String
   brand        Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  images       ProductImage[]
 
   @@index([brandId])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  url       String   @db.Text
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+}
+
+// --- Order Models ---
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNumber  String      @unique
+  status       String      @default("PENDING") // PENDING, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  subtotal     Decimal     @db.Decimal(10, 2)
+  discount     Decimal     @default(0) @db.Decimal(10, 2)
+  discountCode String?
+  total        Decimal     @db.Decimal(10, 2)
+
+  // Shipping info
+  firstName    String
+  lastName     String
+  address      String      @db.Text
+  subdistrict  String
+  district     String
+  province     String
+  postcode     String
+  phone        String
+
+  // Guest email — used to link order to account registered later
+  email        String?
+
+  // Shipping method
+  shippingMethodId   String?
+  shippingMethodName String?
+  shippingCost       Decimal  @default(0) @db.Decimal(10, 2)
+  shippingMethod     ShippingMethod? @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+
+  // Slip
+  slipUrl      String?     @db.Text
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  userId       String?
+  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  items        OrderItem[]
+
+  @@index([userId])
+  @@index([email])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String   @db.VarChar(500)
+  productName String
+  productImage String? @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  quantity    Int
+
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model ShippingMethod {
+  id             String   @id @default(cuid())
+  name           String
+  price          Decimal  @db.Decimal(10, 2)
+  freeThreshold  Decimal? @db.Decimal(10, 2) // null = ไม่มีฟรี, 0 = ฟรีเสมอ, >0 = ฟรีเมื่อสั่งซื้อถึงขั้นต่ำ
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  orders         Order[]
+}
+
+model SiteSetting {
+  id           String   @id
+  facebookUrl  String?  @db.Text
+  instagramUrl String?  @db.Text
+  youtubeUrl   String?  @db.Text
+  lineUrl      String?  @db.Text
+  callCenterPhone String? @db.VarChar(100)
+  lineOfficial String? @db.VarChar(120)
+  contactEmail String? @db.VarChar(191)
+  serviceHours String? @db.Text
+  bankAccountInfo String? @db.LongText
+  companyAddress String? @db.LongText
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
 }

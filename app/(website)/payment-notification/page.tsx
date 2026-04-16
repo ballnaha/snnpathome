@@ -2,13 +2,19 @@ import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import PaymentNotificationClient from "./PaymentNotificationClient";
 import { Box, CircularProgress } from "@mui/material";
+import prisma from "@/lib/prisma";
 
 export const metadata: Metadata = {
-  title: "แจ้งชำระเงิน | SNNP AT HOME",
-  description: "Upload your transfer slip to notify us of your payment.",
+  title: "แจ้งชำระเงิน",
+  description: "อัปโหลดสลิปโอนเงินเพื่อแจ้งชำระเงินให้เราทราบ",
 };
 
-export default function PaymentNotificationPage() {
+export default async function PaymentNotificationPage() {
+  const siteSettings = await prisma.siteSetting.findUnique({
+    where: { id: "default" },
+    select: { bankAccountInfo: true },
+  });
+
   return (
     <Suspense 
       fallback={
@@ -17,7 +23,7 @@ export default function PaymentNotificationPage() {
         </Box>
       }
     >
-      <PaymentNotificationClient />
+      <PaymentNotificationClient bankAccountInfo={siteSettings?.bankAccountInfo ?? null} />
     </Suspense>
   );
 }

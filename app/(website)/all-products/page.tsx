@@ -1,197 +1,351 @@
-"use client";
-
-import React from "react";
-import { 
-  Box, 
-  Container, 
-  Stack, 
-  Typography, 
-  TextField, 
-  InputAdornment, 
-  Button, 
-  MenuItem, 
-  Select, 
-  FormControl, 
-  InputLabel,
+import React, { Suspense } from "react";
+import type { Metadata } from "next";
+import {
+  Box,
+  Chip,
+  Container,
+  Stack,
+  Typography,
   Breadcrumbs,
-  Link as MuiLink
 } from "@mui/material";
 import Link from "next/link";
-import { SearchNormal1, ArrowRight2 } from "iconsax-react";
+import { ArrowRight2 } from "iconsax-react";
 import ProductCard from "@/components/ProductCard";
+import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+import AllProductsControls from "./AllProductsControls";
 
-// Mock Data for All Products
-const allProductsData = [
-  { id: "1", name: "เบนโตะ ปลาหมึกอบทรงเครื่อง (สีแดง) 20ก.", price: 25, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/bento-red.png", bestSeller: true },
-  { id: "2", name: "เจเล่ บิวตี้ รสแอปเปิ้ล (สีเขียว) 150ก.", price: 10, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/jele-green.png", bestSeller: true },
-  { id: "3", name: "โลตัส ขนมรูปน่องไก่ รสทรงเครื่อง 55ก.", price: 20, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/lotus-original.png" },
-  { id: "4", name: "เบนโตะ ปลาหมึกย่างน้ำพริกตำรับไทย (สีน้ำเงิน) 20ก.", price: 25, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/bento-blue.png" },
-  { id: "5", name: "เบนโตะ ปลาหมึกอบน้ำจิ้มหวาน (สีเขียว) 20ก.", price: 25, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/bento-green.png" },
-  { id: "6", name: "เจเล่ บิวตี้ รสลิ้นจี่ (สีชมพู) 150ก.", price: 10, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/jele-pink.png" },
-  { id: "7", name: "โลตัส ขนมรูปน่องไก่ รสแซ่บซี๊ด 55ก.", price: 20, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/lotus-spicy.png" },
-  { id: "8", name: "สวีทตี้ ขนมเยลลี่กลิ่นผลไม้ต่างๆ 20ก.", price: 5, image: "https://www.snnpathome.com/catalog/view/theme/snnpathome/image/jele-white.png" },
-];
+type SearchParams = Promise<{
+  brand?: string;
+  search?: string;
+  sort?: string;
+}>;
 
-export default function AllProductsPage() {
-  const [sortBy, setSortBy] = React.useState("popularity");
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  const { brand, search } = await searchParams;
+
+  if (brand) {
+    const brandData = await prisma.brand.findUnique({ where: { slug: brand } });
+    if (brandData) {
+      return {
+        title: brandData.name,
+        description: `สินค้าแบรนด์ ${brandData.name} ทั้งหมด สั่งซื้อออนไลน์ได้ที่ SNNP AT HOME ส่งตรงถึงบ้าน`,
+        openGraph: {
+          title: `${brandData.name} | SNNP AT HOME`,
+          description: `เลือกซื้อสินค้าแบรนด์ ${brandData.name} พร้อมโปรโมชั่นพิเศษ`,
+          type: "website",
+        },
+      };
+    }
+  }
+
+  if (search) {
+    return {
+      title: `ค้นหา "${search}"`,
+      description: `ผลการค้นหาสินค้า "${search}" ใน SNNP AT HOME`,
+    };
+  }
+
+  return {
+    title: "สินค้าทั้งหมด",
+    description: "รวมสินค้าทั้งหมดจากเครือ SNNP — Bento, Jele, Lotus, Squidy และอีกมากมาย สั่งซื้อออนไลน์ได้เลย",
+    openGraph: {
+      title: "สินค้าทั้งหมด | SNNP AT HOME",
+      description: "เลือกซื้อสินค้าจากเครือ SNNP ครบทุกแบรนด์",
+      type: "website",
+    },
+  };
+}
+
+export default async function AllProductsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const { brand, search, sort } = await searchParams;
+
+  // Fetch brands for the sidebar
+  const brands = await prisma.brand.findMany({
+    orderBy: { priority: "desc" },
+  });
+
+  // Build product filter
+  const where: Prisma.ProductWhereInput = {
+    isActive: true,
+    ...(brand ? { brand: { slug: brand } } : {}),
+    ...(search
+      ? { name: { contains: search } }
+      : {}),
+  };
+
+  const orderBy: Prisma.ProductOrderByWithRelationInput =
+    sort === "price-low"
+      ? { price: "asc" }
+      : sort === "price-high"
+        ? { price: "desc" }
+        : { createdAt: "desc" };
+
+  const products = await prisma.product.findMany({
+    where,
+    orderBy,
+    include: { brand: true },
+  });
+
+  // Active brand info
+  const activeBrand = brand
+    ? brands.find((b) => b.slug === brand)
+    : null;
+  const pageTitle = activeBrand ? activeBrand.name : "สินค้าทั้งหมด";
 
   return (
     <Box sx={{ bgcolor: "#f8f9fa", minHeight: "100vh" }}>
       {/* SEO Title */}
-      <Typography variant="h1" sx={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }}>
-        สินค้าทั้งหมด - SNNP AT HOME
+      <Typography
+        variant="h1"
+        sx={{
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          padding: 0,
+          margin: "-1px",
+          overflow: "hidden",
+          clip: "rect(0,0,0,0)",
+          border: 0,
+        }}
+      >
+        {pageTitle} - SNNP AT HOME
       </Typography>
 
-      {/* 1. Search Hero Section */}
-      <Box component="section" sx={{ bgcolor: "#eee", py: { xs: 6, md: 10 }, textAlign: "center" }}>
+      {/* Hero */}
+      <Box
+        component="section"
+        sx={{ bgcolor: "#eee", py: { xs: 4, md: 6 }, textAlign: "center" }}
+      >
         <Container maxWidth="md">
-          <Typography variant="h2" fontWeight="900" mb={4} sx={{ color: "#333", fontSize: { xs: '1.5rem', md: '2.5rem' } }}>
-            ค้นหาสินค้าที่ท่านต้องการ
+          <Typography
+            variant="h2"
+            fontWeight="900"
+            sx={{ color: "#333", fontSize: { xs: "1.4rem", md: "2rem" } }}
+          >
+            {pageTitle}
           </Typography>
-          <Stack direction="row" spacing={0} sx={{ maxWidth: 600, mx: "auto", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
-            <TextField 
-              fullWidth 
-              placeholder="ค้นหาชื่อสินค้า..." 
-              variant="outlined"
-              sx={{ 
-                bgcolor: "white", 
-                "& fieldset": { borderRadius: "10px 0 0 10px", borderColor: "transparent" },
-                "&:hover fieldset": { borderColor: "transparent" },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchNormal1 size="20" color="#d71414" />
-                  </InputAdornment>
-                ),
-                "aria-label": "Search products"
-              }}
-            />
-            <Button 
-              variant="contained" 
-              sx={{ 
-                px: 4, 
-                borderRadius: "0 10px 10px 0", 
-                bgcolor: "primary.main", 
-                "&:hover": { bgcolor: "#cc0000" },
-                fontWeight: 700
-              }}
-            >
-              ค้นหา
-            </Button>
-          </Stack>
+          {search && (
+            <Typography variant="body2" color="text.secondary" mt={1}>
+              ผลการค้นหา: &quot;{search}&quot; — พบ {products.length} รายการ
+            </Typography>
+          )}
         </Container>
       </Box>
 
-      {/* 2. Main Content Area */}
-      <Container maxWidth="lg" component="main" sx={{ py: 6, flexGrow: 1 }}>
-        <Breadcrumbs 
-          separator={<ArrowRight2 size="14" color="#999" />} 
+      {/* Main Content */}
+      <Container maxWidth="lg" component="main" sx={{ py: { xs: 3, md: 6 } }}>
+        <Breadcrumbs
+          separator={<ArrowRight2 size="14" color="#999" />}
           aria-label="breadcrumb"
-          sx={{ mb: 4 }}
+          sx={{ mb: { xs: 2, md: 4 } }}
         >
-          <MuiLink component={Link} href="/" underline="hover" color="inherit" sx={{ fontSize: '0.85rem' }}>
+          <Link href="/" style={{ fontSize: "0.85rem", color: "inherit", textDecoration: "none" }}>
             หน้าแรก
-          </MuiLink>
-          <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-            สินค้าทั้งหมด
-          </Typography>
+          </Link>
+          {activeBrand ? (
+            <>
+              <Link href="/all-products" style={{ fontSize: "0.85rem", color: "inherit", textDecoration: "none" }}>
+                สินค้าทั้งหมด
+              </Link>
+              <Typography
+                color="text.primary"
+                sx={{ fontSize: "0.85rem", fontWeight: 600 }}
+              >
+                {activeBrand.name}
+              </Typography>
+            </>
+          ) : (
+            <Typography
+              color="text.primary"
+              sx={{ fontSize: "0.85rem", fontWeight: 600 }}
+            >
+              สินค้าทั้งหมด
+            </Typography>
+          )}
         </Breadcrumbs>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "260px 1fr" }, gap: 4 }}>
-          
-          {/* Sidebar Menu */}
-          <Box component="aside">
-            <Box sx={{ bgcolor: "white", borderRadius: 3, overflow: "hidden", border: "1px solid", borderColor: "grey.200" }}>
+        {/* Mobile brand filter — horizontal scroll chips, hidden on md+ */}
+        <Box
+          sx={{
+            display: { xs: "flex", md: "none" },
+            gap: 1,
+            overflowX: "auto",
+            pb: 1,
+            mb: 2,
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
+          <Link href="/all-products" style={{ textDecoration: "none" }}>
+            <Chip
+              label="ทั้งหมด"
+              clickable
+              color={!brand ? "primary" : "default"}
+              variant={!brand ? "filled" : "outlined"}
+              sx={{ flexShrink: 0 }}
+            />
+          </Link>
+          {brands.map((b) => (
+            <Link key={b.id} href={`/all-products?brand=${b.slug}`} style={{ textDecoration: "none" }}>
+              <Chip
+                label={b.name}
+                clickable
+                color={brand === b.slug ? "primary" : "default"}
+                variant={brand === b.slug ? "filled" : "outlined"}
+                sx={{ flexShrink: 0 }}
+              />
+            </Link>
+          ))}
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "240px 1fr" },
+            gap: { xs: 2, md: 4 },
+          }}
+        >
+          {/* Sidebar — hidden on mobile */}
+          <Box component="aside" sx={{ display: { xs: "none", md: "block" } }}>
+            <Box
+              sx={{
+                bgcolor: "white",
+                borderRadius: 3,
+                overflow: "hidden",
+                border: "1px solid",
+                borderColor: "grey.200",
+                position: "sticky",
+                top: 80,
+              }}
+            >
               <Box sx={{ bgcolor: "primary.main", color: "white", px: 3, py: 1.5 }}>
-                <Typography variant="subtitle1" fontWeight="800">เมนู</Typography>
+                <Typography variant="subtitle1" fontWeight="800">
+                  หมวดหมู่
+                </Typography>
               </Box>
               <Stack component="nav">
-                <SidebarItem label="สินค้าทั้งหมด" active />
-                <SidebarItem label="Jele" />
-                <SidebarItem label="Bento" />
-                <SidebarItem label="Lotus" />
-                <SidebarItem label="Bakery House" />
-                <SidebarItem label="Magic Farm" />
+                <SidebarItem
+                  label="สินค้าทั้งหมด"
+                  href="/all-products"
+                  active={!brand}
+                />
+                {brands.map((b) => (
+                  <SidebarItem
+                    key={b.id}
+                    label={b.name}
+                    href={`/all-products?brand=${b.slug}`}
+                    active={brand === b.slug}
+                  />
+                ))}
               </Stack>
             </Box>
           </Box>
 
-          {/* Product Grid Area */}
+          {/* Products area */}
           <Box>
-            {/* Header / Filter bar */}
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
-              <Typography variant="h3" fontWeight="900" sx={{ fontSize: '1.5rem' }}>สินค้าทั้งหมด</Typography>
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel id="sort-select-label">เรียงตาม</InputLabel>
-                <Select
-                  labelId="sort-select-label"
-                  label="เรียงตาม"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as string)}
-                  sx={{ bgcolor: "white", borderRadius: 2 }}
-                >
-                  <MenuItem value="popularity">ความเป็นที่นิยม</MenuItem>
-                  <MenuItem value="price-low">ราคาต่ำสุดไปสูงสุด</MenuItem>
-                  <MenuItem value="price-high">ราคาสูงสุดไปต่ำสุด</MenuItem>
-                  <MenuItem value="latest">ล่าสุด</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
+            {/* Controls: search + sort */}
+            <Suspense>
+              <AllProductsControls
+                defaultSearch={search ?? ""}
+                defaultSort={sort ?? "latest"}
+              />
+            </Suspense>
+
+            {/* Result count */}
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              {products.length === 0
+                ? "ไม่พบสินค้า"
+                : `แสดง ${products.length} รายการ`}
+            </Typography>
 
             {/* Grid */}
-            <Box 
-              display="grid" 
-              gridTemplateColumns={{ xs: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} 
-              gap={3}
-            >
-              {allProductsData.map((product) => (
-                <ProductCard key={product.id} {...product} />
-              ))}
-            </Box>
-
-            {/* Load More Button */}
-            <Box textAlign="center" mt={8}>
-              <Button 
-                variant="outlined" 
-                color="primary"
-                sx={{ 
-                  borderRadius: 10, 
-                  px: 6, 
-                  py: 1.5, 
-                  fontWeight: 800, 
-                  borderWidth: 2,
-                  "&:hover": { borderWidth: 2 }
+            {products.length > 0 ? (
+              <Box
+                display="grid"
+                gridTemplateColumns={{
+                  xs: "repeat(2, 1fr)",
+                  lg: "repeat(3, 1fr)",
+                }}
+                gap={{ xs: 1.5, md: 3 }}
+              >
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug}
+                    name={product.name}
+                    price={Number(product.price)}
+                    image={product.image ?? ""}
+                    isBestSeller={product.isBestSeller}
+                    createdAt={product.createdAt.toISOString()}
+                    unitsPerCase={product.unitsPerCase}
+                    unitLabel={product.unitLabel}
+                    caseLabel={product.caseLabel}
+                  />
+                ))}
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: 10,
+                  color: "text.secondary",
                 }}
               >
-                โหลดเพิ่มเติม
-              </Button>
-            </Box>
+                <Typography variant="h6" fontWeight={600} mb={1}>
+                  ไม่พบสินค้าที่ค้นหา
+                </Typography>
+                <Typography variant="body2">
+                  ลองเปลี่ยนคำค้นหาหรือเลือกหมวดหมู่อื่น
+                </Typography>
+              </Box>
+            )}
           </Box>
-
         </Box>
       </Container>
     </Box>
   );
 }
 
-function SidebarItem({ label, active = false }: { label: string; active?: boolean }) {
+function SidebarItem({
+  label,
+  href,
+  active = false,
+}: {
+  label: string;
+  href: string;
+  active?: boolean;
+}) {
   return (
-    <Box 
-      sx={{ 
-        px: 3, 
-        py: 1.5, 
-        cursor: "pointer", 
-        bgcolor: active ? "rgba(215, 20, 20, 0.05)" : "transparent",
-        borderLeft: active ? "4px solid" : "4px solid transparent",
-        borderColor: "primary.main",
-        transition: "0.2s",
-        "&:hover": { bgcolor: "rgba(215, 20, 20, 0.03)" }
-      }}
-    >
-      <Typography variant="body2" fontWeight={active ? 800 : 500} color={active ? "primary.main" : "text.secondary"}>
-        {label}
-      </Typography>
-    </Box>
+    <Link href={href} style={{ textDecoration: "none" }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 1.5,
+          bgcolor: active ? "rgba(215, 20, 20, 0.05)" : "transparent",
+          borderLeft: "4px solid",
+          borderColor: active ? "primary.main" : "transparent",
+          transition: "0.2s",
+          "&:hover": { bgcolor: "rgba(215, 20, 20, 0.06)" },
+        }}
+      >
+        <Typography
+          variant="body2"
+          fontWeight={active ? 800 : 500}
+          color={active ? "primary.main" : "text.secondary"}
+        >
+          {label}
+        </Typography>
+      </Box>
+    </Link>
   );
 }

@@ -3,22 +3,30 @@
 import React from "react";
 import { Box, Typography, Button, Container, Stack } from "@mui/material";
 import ProductCard from "./ProductCard";
+import Link from "next/link";
 
 interface Product {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   image: string;
-  bestSeller?: boolean;
+  slug?: string;
+  isBestSeller?: boolean;
+  createdAt?: string | null;
+  unitsPerCase?: number | null;
+  unitLabel?: string | null;
+  caseLabel?: string | null;
 }
 
 interface ProductSectionProps {
   title: string;
   subtitle: string;
   products: Product[];
+  viewAllHref?: string;
 }
 
-export default function ProductSection({ title, subtitle, products }: ProductSectionProps) {
+export default function ProductSection({ title, subtitle, products, viewAllHref }: ProductSectionProps) {
   return (
     <Box component="section" sx={{ py: 8 }}>
       <Container maxWidth="lg">
@@ -56,13 +64,15 @@ export default function ProductSection({ title, subtitle, products }: ProductSec
         </Box>
 
         <Box textAlign="center" mt={6}>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            sx={{ 
-              px: 6, 
-              py: 1.5, 
-              borderRadius: "50px", 
+          <Button
+            component={viewAllHref ? Link : "button"}
+            href={viewAllHref ?? undefined}
+            variant="contained"
+            color="primary"
+            sx={{
+              px: 6,
+              py: 1.5,
+              borderRadius: "50px",
               fontWeight: 700,
               fontSize: '1rem',
               boxShadow: "0 8px 16px rgba(215, 20, 20, 0.2)",

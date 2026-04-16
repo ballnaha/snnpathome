@@ -1,0 +1,175 @@
+import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
+
+export async function GET() {
+  // Read logo as base64
+  let logoSrc = "";
+  try {
+    const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
+    const logoBuffer = fs.readFileSync(logoPath);
+    logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+  } catch {
+    // skip
+  }
+
+  const orderNumber = "SNNP-123456";
+  const firstName = "สมชาย";
+  const lastName = "ใจดี";
+  const address = "123/4 หมู่ 5 ซ.ลาดพร้าว 10";
+  const subdistrict = "จอมพล";
+  const district = "จตุจักร";
+  const province = "กรุงเทพมหานคร";
+  const postcode = "10900";
+  const phone = "0812345678";
+  const subtotal = 1490;
+  const discount = 10;
+  const total = 1480;
+  const discountCode = "SNNP10";
+
+  const items = [
+    {
+      productName: "ข้าวกล้องมะลิ 100% ศรีนานาพร 1 กก.",
+      productImage: null,
+      price: 95,
+      quantity: 3,
+    },
+    {
+      productName: "น้ำพริกเผาแม่ประนอม สูตรต้นตำรับ 200 กรัม",
+      productImage: null,
+      price: 145,
+      quantity: 2,
+    },
+    {
+      productName: "ปลาทูนึ่ง Premium Grade A บรรจุกล่อง",
+      productImage: null,
+      price: 870,
+      quantity: 1,
+    },
+  ];
+
+  const itemsHtml = items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+          ${item.productImage ? `<img src="${item.productImage}" alt="${item.productName}" width="50" height="50" style="object-fit:contain; border-radius:6px; border:1px solid #eee; vertical-align:middle; margin-right:10px;" />` : ""}
+          <span style="font-weight:600;">${item.productName}</span>
+        </td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align:center;">${item.quantity}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align:right; font-weight:700;">฿${(item.price * item.quantity).toLocaleString()}</td>
+      </tr>`
+    )
+    .join("");
+
+  const html = `
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ยืนยันคำสั่งซื้อ ${orderNumber}</title>
+</head>
+<body style="margin:0; padding:0; background:#f4f4f5; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1a1a1a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background:#d71414; padding: 32px 40px; text-align:center;">
+              ${logoSrc ? `<img src="${logoSrc}" alt="SNNP AT HOME" width="120" height="38" style="object-fit:contain; margin-bottom:8px; display:block; margin-left:auto; margin-right:auto;" />` : `<h1 style="margin:0; color:#fff; font-size:22px; font-weight:900; letter-spacing:0.5px;">SNNP AT HOME</h1>`}
+              <p style="margin:8px 0 0; color:rgba(255,255,255,0.85); font-size:14px;">ยืนยันคำสั่งซื้อของคุณ</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px;">
+
+              <h2 style="margin: 0 0 6px; font-size:18px; color:#1a1a1a;">สวัสดีคุณ ${firstName} ${lastName} 🎉</h2>
+              <p style="margin: 0 0 28px; color:#555; font-size:14px; line-height:1.6;">เราได้รับคำสั่งซื้อของคุณแล้ว กรุณาชำระเงินตามรายละเอียดด้านล่างเพื่อดำเนินการต่อ</p>
+
+              <!-- Order Number -->
+              <div style="background:#fff9f9; border:1px solid #ffd5d5; border-radius:8px; padding:14px 20px; margin-bottom:28px;">
+                <span style="font-size:13px; color:#888;">หมายเลขคำสั่งซื้อ &nbsp;</span>
+                <span style="font-size:18px; font-weight:900; color:#d71414; letter-spacing:1px;">${orderNumber}</span>
+              </div>
+
+              <!-- Items -->
+              <h3 style="font-size:15px; font-weight:800; margin:0 0 12px; color:#333;">รายการสินค้า</h3>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <thead>
+                  <tr style="border-bottom:2px solid #eee;">
+                    <th style="text-align:left; padding-bottom:8px; font-size:13px; color:#888; font-weight:600;">สินค้า</th>
+                    <th style="text-align:center; padding-bottom:8px; font-size:13px; color:#888; font-weight:600;">จำนวน</th>
+                    <th style="text-align:right; padding-bottom:8px; font-size:13px; color:#888; font-weight:600;">ราคา</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsHtml}
+                </tbody>
+              </table>
+
+              <!-- Totals -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="padding:5px 0; font-size:14px; color:#555;">ยอดรวม</td>
+                  <td style="padding:5px 0; font-size:14px; text-align:right;">฿${subtotal.toLocaleString()}</td>
+                </tr>
+                ${discount > 0 ? `
+                <tr>
+                  <td style="padding:5px 0; font-size:14px; color:#22aa44;">ส่วนลด${discountCode ? ` (${discountCode})` : ""}</td>
+                  <td style="padding:5px 0; font-size:14px; color:#22aa44; text-align:right;">-฿${discount.toLocaleString()}</td>
+                </tr>` : ""}
+                <tr>
+                  <td style="padding:10px 0 0; font-size:16px; font-weight:900; border-top:2px solid #eee;">ยอดสุทธิ</td>
+                  <td style="padding:10px 0 0; font-size:16px; font-weight:900; color:#d71414; text-align:right; border-top:2px solid #eee;">฿${total.toLocaleString()}</td>
+                </tr>
+              </table>
+
+              <!-- Shipping Info -->
+              <h3 style="font-size:15px; font-weight:800; margin:0 0 12px; color:#333;">ที่อยู่จัดส่ง</h3>
+              <div style="background:#f9f9f9; border-radius:8px; padding:14px 18px; margin-bottom:28px; font-size:14px; color:#444; line-height:1.8;">
+                ${firstName} ${lastName}<br/>
+                ${address}<br/>
+                ต.${subdistrict} อ.${district} จ.${province} ${postcode}<br/>
+                โทร: ${phone}
+              </div>
+
+              <!-- Payment Instructions -->
+              <h3 style="font-size:15px; font-weight:800; margin:0 0 12px; color:#333;">วิธีการชำระเงิน</h3>
+              <div style="background:#fff9f9; border:1px solid #ffd5d5; border-radius:8px; padding:14px 18px; margin-bottom:28px; font-size:14px; line-height:1.8;">
+                <strong>โอนเงินเข้าบัญชีธนาคาร</strong><br/>
+                ธนาคาร: กสิกรไทย (KBank)<br/>
+                ชื่อบัญชี: บมจ. ศรีนานาพร มาร์เก็ตติ้ง<br/>
+                เลขที่บัญชี: <strong style="color:#d71414;">123-4-56789-0</strong><br/>
+                <br/>
+                หลังโอนเงินแล้ว กรุณาแนบสลิปที่
+                <a href="http://localhost:3000/payment-notification?order=${orderNumber}" style="color:#d71414; font-weight:700;">แจ้งชำระเงิน</a>
+              </div>
+
+              <p style="font-size:13px; color:#999; margin:0;">หากมีคำถามหรือต้องการความช่วยเหลือ กรุณาติดต่อฝ่ายบริการลูกค้าของเรา</p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f9f9f9; padding:20px 40px; text-align:center; border-top:1px solid #eee;">
+              <p style="margin:0; font-size:12px; color:#aaa;">© 2026 Srinanaporn Marketing Public Company Limited. สงวนลิขสิทธิ์</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  return new NextResponse(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
