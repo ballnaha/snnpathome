@@ -15,7 +15,6 @@ import {
   Paper,
   Grow,
   Popper,
-  Drawer,
   List,
   ListItemButton,
   ListItemIcon,
@@ -32,7 +31,6 @@ import {
   Receipt1, 
   Logout, 
   ArrowDown2,
-  Heart,
   Setting2,
   UserEdit,
   ClipboardText,
@@ -45,49 +43,36 @@ import {
   WalletMinus,
 } from "iconsax-react";
 
-/**
- * Remove any orphaned MUI modal/backdrop elements left in document.body.
- * This can happen when navigating away from a page (e.g. 404) that had
- * a MUI Menu/Modal mounted via Portal — the portal container may survive
- * the React unmount and block clicks on the restored page.
- */
-function cleanupOrphanedMuiElements() {
-  if (typeof document === "undefined") return;
-  // Remove stale MUI backdrop/modal root elements
-  document.querySelectorAll(".MuiModal-root, .MuiPopover-root, .MuiBackdrop-root").forEach((el) => {
-    // Only remove if it's a direct child of body (portal artifact)
-    if (el.parentElement === document.body) {
-      el.remove();
-    }
-  });
-  // Restore body styles that MUI Modal may have set
-  document.body.style.removeProperty("overflow");
-  document.body.style.removeProperty("padding-right");
-}
+// Removed cleanupOrphanedMuiElements as it causes Drawer unclickable issues
+// Use MUI's built-in disableScrollLock if needed, but avoid direct DOM mutations.
 
 export default function Header() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const { totalItems, openDrawer, clearCart } = useCart();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = React.useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = React.useState<HTMLElement | null>(null);
   const menuTriggerRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const primaryMobileLinks = [
+    { href: '/', label: 'หน้าแรก', Icon: Home2 },
+    { href: '/all-products', label: 'สินค้าทั้งหมด', Icon: ShoppingBag },
+    { href: '/promotions', label: 'โปรโมชั่น', Icon: Tag },
+    { href: '/track-order', label: 'ติดตามสถานะใบสั่งซื้อ', Icon: Receipt1 },
+    { href: '/payment-notification', label: 'แจ้งชำระเงิน', Icon: WalletMinus },
+    { href: '/about-us', label: 'เกี่ยวกับเรา', Icon: InfoCircle },
+  ];
+  const accountLinks = [
+    { href: '/profile', label: 'โปรไฟล์ของฉัน', Icon: UserEdit },
+    { href: '/orders', label: 'ประวัติการสั่งซื้อ', Icon: ClipboardText },
+  ];
 
-  // Close menu on route change
+  // Handle bfcache restore
   useEffect(() => {
-    setMenuOpen(false);
-    setMobileDrawerOpen(false);
-  }, [pathname]);
-
-  // Clean up orphaned MUI modal elements on mount and on bfcache restore
-  useEffect(() => {
-    cleanupOrphanedMuiElements();
-
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
-        // Page was restored from bfcache
-        cleanupOrphanedMuiElements();
         setMenuOpen(false);
+        setMobileDrawerOpen(false);
       }
     };
     window.addEventListener("pageshow", handlePageShow);
@@ -98,7 +83,26 @@ export default function Header() {
     };
   }, []);
 
-  const handleToggleMenu = useCallback(() => {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    const previousTouchAction = body.style.touchAction;
+
+    if (mobileDrawerOpen) {
+      body.style.overflow = "hidden";
+      body.style.touchAction = "none";
+    }
+
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.touchAction = previousTouchAction;
+    };
+  }, [mobileDrawerOpen]);
+
+  const handleToggleMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl(event.currentTarget);
     setMenuOpen((prev) => !prev);
   }, []);
 
@@ -110,20 +114,38 @@ export default function Header() {
 
   const handleCloseMenu = useCallback(() => {
     setMenuOpen(false);
+    setMenuAnchorEl(null);
   }, []);
 
+  const isRouteActive = useCallback((href: string) => {
+    if (href === "/") {
+      return pathname === href;
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }, [pathname]);
+
   return (
-    <Box component="header" position="sticky" top={0} zIndex={1100} width="100%">
+    <Box
+      component="header"
+      position="sticky"
+      top={0}
+      zIndex={mobileDrawerOpen ? 1500 : 1100}
+      width="100%"
+      sx={{ display: 'block' }}
+    >
       {/* Top Red Bar */}
       <Box sx={{ bgcolor: "primary.main", color: "white", py: 1 }}>
         <Container maxWidth="lg">
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             {/* Left: Tracking — hidden on mobile */}
             <Stack direction="row" spacing={3} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ cursor: 'pointer', "&:hover": { opacity: 0.8 } }}>
-                <Receipt1 size="16" variant="Bulk" color="#FFF" />
-                <Typography variant="caption" fontWeight="600" sx={{ fontSize: "0.8rem", letterSpacing: 0.3 }}>ติดตามสถานะใบสั่งซื้อ</Typography>
-              </Stack>
+              <Link href="/track-order" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Stack direction="row" spacing={0.8} alignItems="center" sx={{ cursor: 'pointer', "&:hover": { opacity: 0.8 } }}>
+                  <Receipt1 size="16" variant="Bulk" color="#FFF" />
+                  <Typography variant="caption" fontWeight="600" sx={{ fontSize: "0.8rem", letterSpacing: 0.3 }}>ติดตามสถานะใบสั่งซื้อ</Typography>
+                </Stack>
+              </Link>
             </Stack>
 
             {/* Mobile: hamburger */}
@@ -188,7 +210,7 @@ export default function Header() {
                     </Box>
                     <Popper
                       open={menuOpen}
-                      anchorEl={menuTriggerRef.current}
+                      anchorEl={menuAnchorEl}
                       placement="bottom-end"
                       transition
                       disablePortal
@@ -211,19 +233,27 @@ export default function Header() {
                           >
                             <ClickAwayListener onClickAway={handleCloseMenu}>
                               <Box>
-                                <MenuItem onClick={handleCloseMenu} component={Link} href="/profile" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
+                                <MenuItem
+                                  onClick={handleCloseMenu}
+                                  component={Link}
+                                  href="/profile"
+                                  selected={isRouteActive("/profile")}
+                                  sx={{ borderRadius: 2, gap: 1.5, py: 1, "&.Mui-selected": { bgcolor: 'rgba(215,20,20,0.08)' } }}
+                                >
                                    <UserEdit size="18" color="#d71414" variant="Bulk" />
                                    <Typography variant="body2" fontWeight="700">โปรไฟล์ของฉัน</Typography>
                                 </MenuItem>
-                                <MenuItem onClick={handleCloseMenu} component={Link} href="/orders" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
+                                <MenuItem
+                                  onClick={handleCloseMenu}
+                                  component={Link}
+                                  href="/orders"
+                                  selected={isRouteActive("/orders")}
+                                  sx={{ borderRadius: 2, gap: 1.5, py: 1, "&.Mui-selected": { bgcolor: 'rgba(215,20,20,0.08)' } }}
+                                >
                                    <ClipboardText size="18" color="#d71414" variant="Bulk" />
                                    <Typography variant="body2" fontWeight="700">ประวัติการสั่งซื้อ</Typography>
                                 </MenuItem>
-                                <MenuItem onClick={handleCloseMenu} component={Link} href="/wishlist" sx={{ borderRadius: 2, gap: 1.5, py: 1 }}>
-                                   <Heart size="18" color="#d71414" variant="Bulk" />
-                                   <Typography variant="body2" fontWeight="700">สินค้าที่ชอบ</Typography>
-                                </MenuItem>
-                                {(session.user as any)?.role === 'ADMIN' && (
+                                {(session.user as { role?: string } | undefined)?.role === 'ADMIN' && (
                                   <MenuItem onClick={handleCloseMenu} component={Link} href="/admin/users" sx={{ borderRadius: 2, gap: 1.5, py: 1, bgcolor: 'grey.50' }}>
                                     <Setting2 size="18" color="#666" variant="Bulk" />
                                     <Typography variant="body2" fontWeight="800">แผงควบคุมแอดมิน</Typography>
@@ -266,28 +296,33 @@ export default function Header() {
                 )}
               </Box>
 
-              <Badge
-                badgeContent={totalItems}
-                showZero
+              <IconButton 
                 onClick={openDrawer}
-                sx={{
-                  "& .MuiBadge-badge": {
-                    bgcolor: "#FFF",
-                    color: "primary.main",
-                    fontWeight: "900",
-                    fontSize: '10px',
-                    height: 18,
-                    minWidth: 18,
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                  },
-                  cursor: 'pointer',
-                  "&:hover": { opacity: 0.8 },
+                sx={{ 
+                  color: 'white', 
+                  p: 0.5,
                   transition: 'transform 0.2s',
                   "&:active": { transform: 'scale(0.9)' }
                 }}
               >
-                <ShoppingCart size="22" variant="Bulk" color="#FFF" />
-              </Badge>
+                <Badge
+                  badgeContent={totalItems}
+                  showZero
+                  sx={{
+                    "& .MuiBadge-badge": {
+                      bgcolor: "#FFF",
+                      color: "primary.main",
+                      fontWeight: "900",
+                      fontSize: '10px',
+                      height: 18,
+                      minWidth: 18,
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                    }
+                  }}
+                >
+                  <ShoppingCart size="22" variant="Bulk" color="#FFF" />
+                </Badge>
+              </IconButton>
             </Stack>
           </Stack>
         </Container>
@@ -297,94 +332,188 @@ export default function Header() {
       <Box sx={{ bgcolor: "white", borderBottom: 1, borderColor: "grey.200", py: 1.5, display: { xs: 'none', md: 'block' } }}>
         <Container maxWidth="lg">
           <Stack direction="row" justifyContent="center" alignItems="center" spacing={5}>
-            <NavLink href="/" active={pathname === "/"}>หน้าแรก</NavLink>
-            <NavLink href="/all-products" active={pathname === "/all-products"}>สินค้าทั้งหมด</NavLink>
-            <NavLink href="/promotions" active={pathname === "/promotions"}>โปรโมชั่น</NavLink>
-            <NavLink href="/payment-notification" active={pathname === "/payment-notification"}>แจ้งชำระเงิน</NavLink>
-            <NavLink href="/about-us" active={pathname === "/about-us"}>เกี่ยวกับเรา</NavLink>
+            <NavLink href="/" active={isRouteActive("/")}>หน้าแรก</NavLink>
+            <NavLink href="/all-products" active={isRouteActive("/all-products")}>สินค้าทั้งหมด</NavLink>
+            <NavLink href="/promotions" active={isRouteActive("/promotions")}>โปรโมชั่น</NavLink>
+            <NavLink href="/payment-notification" active={isRouteActive("/payment-notification")}>แจ้งชำระเงิน</NavLink>
+            <NavLink href="/about-us" active={isRouteActive("/about-us")}>เกี่ยวกับเรา</NavLink>
           </Stack>
         </Container>
       </Box>
 
-      {/* Mobile Drawer Nav */}
-      <Drawer
-        anchor="left"
-        open={mobileDrawerOpen}
-        onClose={() => setMobileDrawerOpen(false)}
-        PaperProps={{ sx: { width: 280 } }}
+      {/* Mobile Sidebar */}
+      <Box
+        aria-hidden={!mobileDrawerOpen}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1350,
+          pointerEvents: mobileDrawerOpen ? 'auto' : 'none',
+        }}
       >
-        <Box sx={{ p: 2, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Image src="/images/logo.png" alt="SNNP Logo" width={90} height={28} style={{ objectFit: 'contain', height: 'auto' }} />
-          <IconButton onClick={() => setMobileDrawerOpen(false)} sx={{ color: 'white' }}>
-            <CloseCircle size="22" color="#FFF" />
-          </IconButton>
-        </Box>
+        <Box
+          onClick={() => setMobileDrawerOpen(false)}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            bgcolor: 'rgba(10, 15, 26, 0.38)',
+            backdropFilter: 'blur(4px)',
+            opacity: mobileDrawerOpen ? 1 : 0,
+            transition: 'opacity 0.3s ease, backdrop-filter 0.3s ease',
+          }}
+        />
 
-        {/* User info section */}
-        {session ? (
-          <Box sx={{ px: 2, py: 1.5, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'grey.200', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar sx={{ width: 40, height: 40, fontSize: '1rem', fontWeight: 900, bgcolor: 'primary.main', color: 'white' }}>
-              {session.user?.name?.charAt(0) || 'U'}
-            </Avatar>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography fontWeight={800} fontSize="0.9rem" noWrap>{session.user?.name || 'คุณลูกค้า'}</Typography>
-              <Typography fontSize="0.75rem" color="text.secondary" noWrap>{session.user?.email || ''}</Typography>
-            </Box>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: 'min(82vw, 320px)',
+            height: '100dvh',
+            bgcolor: '#fffdf8',
+            backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,248,243,0.98) 100%)',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.22)',
+            transform: mobileDrawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+          }}
+        >
+          <Box sx={{ px: 2, pt: 2, pb: 1.5, bgcolor: 'primary.main', color: 'white' }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Image src="/images/logo.png" alt="SNNP Logo" width={90} height={28} style={{ objectFit: 'contain', width: 'auto', height: 'auto' }} />
+              <IconButton onClick={() => setMobileDrawerOpen(false)} sx={{ color: 'white' }}>
+                <CloseCircle size="22" color="#FFF" />
+              </IconButton>
+            </Stack>
+           
           </Box>
-        ) : (
-          <Box sx={{ px: 2, py: 1.5, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'grey.200', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar sx={{ width: 40, height: 40, bgcolor: 'grey.300' }}>
-              <Profile size="20" color="#999" />
-            </Avatar>
-            <Box>
-              <Typography fontWeight={700} fontSize="0.85rem" color="text.secondary">ยังไม่ได้เข้าสู่ระบบ</Typography>
-              <Link href="/login" style={{ textDecoration: 'none' }}>
-                <Typography fontSize="0.75rem" color="primary.main" fontWeight={700}>เข้าสู่ระบบ / สมัครสมาชิก</Typography>
-              </Link>
-            </Box>
-          </Box>
-        )}
 
-        <List sx={{ pt: 1 }}>
-          {[
-            { href: '/', label: 'หน้าแรก', Icon: Home2 },
-            { href: '/all-products', label: 'สินค้าทั้งหมด', Icon: ShoppingBag },
-            { href: '/promotions', label: 'โปรโมชั่น', Icon: Tag },
-            { href: '/payment-notification', label: 'แจ้งชำระเงิน', Icon: WalletMinus },
-            { href: '/about-us', label: 'เกี่ยวกับเรา', Icon: InfoCircle },
-          ].map(({ href, label, Icon }) => (
-            <ListItemButton
-              key={href}
-              component={Link}
-              href={href}
-              selected={pathname === href}
-              sx={{ borderRadius: 2, mx: 1, mb: 0.5, '&.Mui-selected': { bgcolor: 'rgba(215,20,20,0.08)', color: 'primary.main' } }}
-            >
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <Icon size="20" color={pathname === href ? '#d71414' : '#666'} variant={pathname === href ? 'Bold' : 'Linear'} />
-              </ListItemIcon>
-              <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 700, fontSize: '0.9rem' }} />
-            </ListItemButton>
-          ))}
-          <Divider sx={{ my: 1, mx: 2 }} />
+          {session ? (
+            <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+              <Typography sx={{ px: 0.5, mb: 1, fontSize: '0.72rem', fontWeight: 800, letterSpacing: 1, color: 'text.secondary' }}>
+                ACCOUNT
+              </Typography>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(215,20,20,0.06)', border: '1px solid', borderColor: 'rgba(215,20,20,0.14)', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ width: 46, height: 46, fontSize: '1rem', fontWeight: 900, bgcolor: 'primary.main', color: 'white', boxShadow: '0 8px 18px rgba(215,20,20,0.22)' }}>
+                  {session.user?.name?.charAt(0) || 'U'}
+                </Avatar>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography fontWeight={800} fontSize="0.95rem" noWrap>{session.user?.name || 'คุณลูกค้า'}</Typography>
+                  <Typography fontSize="0.75rem" color="text.secondary" noWrap>{session.user?.email || ''}</Typography>
+                  <Typography sx={{ mt: 0.4, fontSize: '0.72rem', fontWeight: 700, color: 'primary.main' }}>
+                    สมาชิก SNNP พร้อมช้อปต่อได้ทันที
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+              <Typography sx={{ px: 0.5, mb: 1, fontSize: '0.72rem', fontWeight: 800, letterSpacing: 1, color: 'text.secondary' }}>
+                WELCOME
+              </Typography>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ width: 46, height: 46, bgcolor: 'grey.300' }}>
+                  <Profile size="20" color="#999" />
+                </Avatar>
+                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                  <Typography fontWeight={800} fontSize="0.9rem">ยังไม่ได้เข้าสู่ระบบ</Typography>
+                  <Typography fontSize="0.74rem" color="text.secondary">เข้าสู่ระบบเพื่อดูออเดอร์และข้อมูลส่วนตัว</Typography>
+                  <Link href="/login" style={{ textDecoration: 'none' }}>
+                    <Typography sx={{ mt: 0.7, fontSize: '0.76rem', color: 'primary.main', fontWeight: 800 }}>เข้าสู่ระบบ / สมัครสมาชิก</Typography>
+                  </Link>
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          <Box sx={{ px: 2, pt: 0.5 }}>
+            <Typography sx={{ px: 0.5, mb: 1, fontSize: '0.72rem', fontWeight: 800, letterSpacing: 1, color: 'text.secondary' }}>
+              SHOP MENU
+            </Typography>
+          </Box>
+
+          <List sx={{ px: 1, pt: 0, pb: 1, flexGrow: 0 }}>
+            {primaryMobileLinks.map(({ href, label, Icon }) => (
+              <ListItemButton
+                key={href}
+                component={Link}
+                href={href}
+                selected={isRouteActive(href)}
+                onClick={() => setMobileDrawerOpen(false)}
+                sx={{
+                  borderRadius: 3,
+                  mx: 1,
+                  mb: 0.75,
+                  py: 1.1,
+                  '&.Mui-selected': { bgcolor: 'rgba(215,20,20,0.08)', color: 'primary.main' },
+                  '&:hover': { bgcolor: 'rgba(215,20,20,0.05)' },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <Box sx={{ width: 30, height: 30, borderRadius: 2, display: 'grid', placeItems: 'center', bgcolor: isRouteActive(href) ? 'rgba(215,20,20,0.12)' : 'rgba(0,0,0,0.04)' }}>
+                    <Icon size="18" color={isRouteActive(href) ? '#d71414' : '#666'} variant={isRouteActive(href) ? 'Bold' : 'Linear'} />
+                  </Box>
+                </ListItemIcon>
+                <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 800, fontSize: '0.92rem' }} />
+              </ListItemButton>
+            ))}
+          </List>
+
           {session ? (
             <>
-              <ListItemButton component={Link} href="/profile" sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}>
-                <ListItemIcon sx={{ minWidth: 36 }}><UserEdit size="20" color="#666" /></ListItemIcon>
-                <ListItemText primary="โปรไฟล์ของฉัน" primaryTypographyProps={{ fontWeight: 700, fontSize: '0.9rem' }} />
-              </ListItemButton>
-              <ListItemButton component={Link} href="/orders" sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}>
-                <ListItemIcon sx={{ minWidth: 36 }}><ClipboardText size="20" color="#666" /></ListItemIcon>
-                <ListItemText primary="ประวัติการสั่งซื้อ" primaryTypographyProps={{ fontWeight: 700, fontSize: '0.9rem' }} />
-              </ListItemButton>
-              <ListItemButton onClick={handleSignOut} sx={{ borderRadius: 2, mx: 1, color: 'error.main' }}>
-                <ListItemIcon sx={{ minWidth: 36 }}><Logout size="20" color="#d32f2f" /></ListItemIcon>
-                <ListItemText primary="ออกจากระบบ" primaryTypographyProps={{ fontWeight: 700, fontSize: '0.9rem', color: '#d32f2f' }} />
-              </ListItemButton>
+              <Box sx={{ px: 2, pt: 0.5 }}>
+                <Typography sx={{ px: 0.5, mb: 1, fontSize: '0.72rem', fontWeight: 800, letterSpacing: 1, color: 'text.secondary' }}>
+                  MY ACCOUNT
+                </Typography>
+              </Box>
+              <List sx={{ px: 1, pt: 0, pb: 2, flexGrow: 1 }}>
+                {accountLinks.map(({ href, label, Icon }) => (
+                  <ListItemButton
+                    component={Link}
+                    href={href}
+                    key={href}
+                    selected={isRouteActive(href)}
+                    onClick={() => setMobileDrawerOpen(false)}
+                    sx={{
+                      borderRadius: 3,
+                      mx: 1,
+                      mb: 0.75,
+                      py: 1.05,
+                      '&.Mui-selected': { bgcolor: 'rgba(215,20,20,0.08)' },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 40 }}>
+                      <Box sx={{ width: 30, height: 30, borderRadius: 2, display: 'grid', placeItems: 'center', bgcolor: isRouteActive(href) ? 'rgba(215,20,20,0.12)' : 'rgba(0,0,0,0.04)' }}>
+                        <Icon size="18" color={isRouteActive(href) ? '#d71414' : '#666'} variant={isRouteActive(href) ? 'Bold' : 'Linear'} />
+                      </Box>
+                    </ListItemIcon>
+                    <ListItemText primary={label} primaryTypographyProps={{ fontWeight: isRouteActive(href) ? 800 : 700, fontSize: '0.9rem', color: isRouteActive(href) ? 'primary.main' : 'text.primary' }} />
+                  </ListItemButton>
+                ))}
+                <Divider sx={{ my: 1, mx: 2 }} />
+                <ListItemButton onClick={() => { setMobileDrawerOpen(false); handleSignOut(); }} sx={{ borderRadius: 3, mx: 1, py: 1.05, color: 'error.main', bgcolor: 'rgba(211,47,47,0.04)' }}>
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <Box sx={{ width: 30, height: 30, borderRadius: 2, display: 'grid', placeItems: 'center', bgcolor: 'rgba(211,47,47,0.1)' }}>
+                      <Logout size="18" color="#d32f2f" />
+                    </Box>
+                  </ListItemIcon>
+                  <ListItemText primary="ออกจากระบบ" primaryTypographyProps={{ fontWeight: 800, fontSize: '0.9rem', color: '#d32f2f' }} />
+                </ListItemButton>
+              </List>
             </>
-          ) : null}
-        </List>
-      </Drawer>
+          ) : (
+            <Box sx={{ p: 2, pt: 1.5, mt: 'auto' }}>
+              <Box sx={{ borderRadius: 3, p: 1.5, bgcolor: 'rgba(215,20,20,0.05)', border: '1px solid', borderColor: 'rgba(215,20,20,0.12)' }}>
+                <Typography sx={{ fontSize: '0.86rem', fontWeight: 800 }}>ช้อปไวขึ้นเมื่อเข้าสู่ระบบ</Typography>
+                <Typography sx={{ mt: 0.4, fontSize: '0.74rem', color: 'text.secondary' }}>บันทึกที่อยู่ ตรวจสอบออเดอร์ และรับสิทธิ์โปรโมชันได้สะดวกกว่าเดิม</Typography>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Box>
     </Box>
   );
 }

@@ -36,6 +36,7 @@ function mapProduct(p: { id: string; name: string; slug: string; price: { toNumb
 
 export default async function Home() {
   const brands = await prisma.brand.findMany({
+    where: { isActive: true },
     orderBy: { priority: "asc" },
     include: {
       products: {
@@ -47,7 +48,7 @@ export default async function Home() {
   });
 
   const allProducts = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { isActive: true, brand: { isActive: true } },
     orderBy: { createdAt: "desc" },
     take: 8,
   });

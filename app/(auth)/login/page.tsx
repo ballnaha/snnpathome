@@ -16,13 +16,27 @@ import {
 } from "@mui/material";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeSlash, Google, DirectRight, Sms, Lock } from "iconsax-react";
+import { getGoogleOAuthDevHint, isUnsupportedGoogleOAuthOrigin } from "@/lib/google-oauth-origin";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [googleHint, setGoogleHint] = React.useState<string | null>(null);
+  const loginReason = searchParams.get("reason");
+  const loginNotice = loginReason === "admin-auth"
+    ? "กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลเพื่อเข้าใช้งานหน้าจัดการระบบ"
+    : loginReason === "signed-out"
+      ? "คุณออกจากระบบแล้ว"
+      : null;
+
+  React.useEffect(() => {
+    setGoogleHint(getGoogleOAuthDevHint(window.location.href));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +48,10 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
+    if (isUnsupportedGoogleOAuthOrigin(window.location.href)) {
+      return;
+    }
+
     signIn("google", { callbackUrl: "/" });
   };
 
@@ -64,12 +82,21 @@ export default function LoginPage() {
 
           {/* Form Content */}
           <Box sx={{ p: { xs: 3, md: 4 } }}>
+            {loginNotice && (
+              <Box sx={{ mb: 2, px: 1.5, py: 1.25, borderRadius: 2, bgcolor: "warning.50", border: "1px solid", borderColor: "warning.200" }}>
+                <Typography variant="body2" color="warning.dark" fontWeight="700">
+                  {loginNotice}
+                </Typography>
+              </Box>
+            )}
+
             {/* Social Login Buttons */}
             <Stack spacing={1.5} mb={3}>
               <Button 
                 fullWidth 
                 variant="outlined" 
                 onClick={handleGoogleLogin}
+                disabled={!!googleHint}
                 startIcon={<Google variant="Bold" color="#EA4335" size="18" />}
                 sx={{ 
                   py: 1.2, 
@@ -83,6 +110,11 @@ export default function LoginPage() {
               >
                 Sign in with Google
               </Button>
+              {googleHint && (
+                <Typography variant="caption" color="warning.main">
+                  {googleHint}
+                </Typography>
+              )}
             </Stack>
 
             <Divider sx={{ mb: 3 }}>

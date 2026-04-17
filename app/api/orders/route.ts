@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { createOrderAccessToken } from "@/lib/order-access";
+import { resolveCouponForSubtotal } from "@/lib/coupons";
 
 interface OrderItemInput {
   id: string;
@@ -60,10 +62,7 @@ export async function POST(req: NextRequest) {
 
     const {
       items,
-      subtotal,
-      discount,
       discountCode,
-      total,
       email,
       firstName,
       lastName,
@@ -95,16 +94,37 @@ export async function POST(req: NextRequest) {
       // guest checkout — no session
     }
 
+    const normalizedSubtotal = items.reduce(
+      (sum, item) => sum + Number(item.price) * Number(item.quantity),
+      0
+    );
+    const normalizedShippingCost = Number(shippingCost ?? 0);
+
+    let appliedDiscount = 0;
+    let appliedDiscountCode: string | null = null;
+
+    if (discountCode) {
+      const couponResult = await resolveCouponForSubtotal(discountCode, normalizedSubtotal);
+      if (!couponResult.ok) {
+        return NextResponse.json({ error: couponResult.error }, { status: 400 });
+      }
+
+      appliedDiscount = couponResult.discountAmount;
+      appliedDiscountCode = couponResult.coupon.code;
+    }
+
+    const normalizedTotal = Math.max(0, normalizedSubtotal + normalizedShippingCost - appliedDiscount);
+
     // Generate sequential order number (YYMM + running)
     const orderNumber = await generateOrderNumber();
 
     const order = await prisma.order.create({
       data: {
         orderNumber,
-        subtotal,
-        discount: discount ?? 0,
-        discountCode: discountCode ?? null,
-        total,
+        subtotal: normalizedSubtotal,
+        discount: appliedDiscount,
+        discountCode: appliedDiscountCode,
+        total: normalizedTotal,
         email: email ?? null,
         firstName,
         lastName,
@@ -116,7 +136,7 @@ export async function POST(req: NextRequest) {
         phone,
         shippingMethodId: shippingMethodId ?? null,
         shippingMethodName: shippingMethodName ?? null,
-        shippingCost: shippingCost ?? 0,
+        shippingCost: normalizedShippingCost,
         userId,
         items: {
           create: items.map((item) => ({
@@ -149,10 +169,10 @@ export async function POST(req: NextRequest) {
         province,
         postcode,
         phone,
-        subtotal,
-        discount: discount ?? 0,
-        total,
-        discountCode,
+        subtotal: normalizedSubtotal,
+        discount: appliedDiscount,
+        total: normalizedTotal,
+        discountCode: appliedDiscountCode,
         items: order.items.map((i) => ({
           productName: i.productName,
           productImage: i.productImage,
@@ -163,7 +183,23 @@ export async function POST(req: NextRequest) {
       }).catch((err) => console.error("[email] order confirmation failed:", err));
     }
 
-    return NextResponse.json({ orderNumber: order.orderNumber, orderId: order.id }, { status: 201 });
+    const accessToken = createOrderAccessToken(
+      { orderId: order.id, orderNumber: order.orderNumber },
+      7 * 24 * 60 * 60 * 1000
+    );
+
+    return NextResponse.json(
+      {
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        accessToken,
+        subtotal: normalizedSubtotal,
+        discount: appliedDiscount,
+        discountCode: appliedDiscountCode,
+        total: normalizedTotal,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("[POST /api/orders]", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" }, { status: 500 });

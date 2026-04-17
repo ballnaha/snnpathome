@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as any).role !== "ADMIN") {
-    return null;
-  }
-  return session;
-}
+import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth";
 
 // GET — list all (including inactive)
 export async function GET() {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
   const methods = await prisma.shippingMethod.findMany({
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -31,8 +22,8 @@ export async function GET() {
 
 // POST — create
 export async function POST(req: NextRequest) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
   const { name, price, freeThreshold, isActive, sortOrder } = await req.json();
 

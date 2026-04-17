@@ -14,27 +14,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowDown2, ArrowUp2 } from "iconsax-react";
-
-const STATUS_LABEL: Record<
-  string,
-  {
-    label: string;
-    color:
-      | "default"
-      | "warning"
-      | "info"
-      | "success"
-      | "error"
-      | "primary";
-  }
-> = {
-  PENDING:    { label: "รอชำระเงิน",  color: "warning" },
-  PAID:       { label: "ชำระแล้ว",    color: "info" },
-  PROCESSING: { label: "กำลังเตรียม", color: "primary" },
-  SHIPPED:    { label: "จัดส่งแล้ว",  color: "info" },
-  DELIVERED:  { label: "ได้รับแล้ว",  color: "success" },
-  CANCELLED:  { label: "ยกเลิก",      color: "error" },
-};
+import OrderStatusTimeline, { ORDER_STATUS_LABEL, getStatusChipSx } from "@/components/OrderStatusTimeline";
 
 interface OrderItem {
   id: string;
@@ -81,7 +61,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
     <Stack spacing={2}>
       {orders.map((order) => {
         const status =
-          STATUS_LABEL[order.status] ?? {
+          ORDER_STATUS_LABEL[order.status] ?? {
             label: order.status,
             color: "default" as const,
           };
@@ -119,8 +99,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                 <Typography
                   variant="subtitle2"
                   fontWeight={900}
-                  color="primary.main"
-                  sx={{ letterSpacing: 0.5 }}
+                  sx={{ color: "#8a6a18", letterSpacing: 0.5 }}
                 >
                   {order.orderNumber}
                 </Typography>
@@ -139,15 +118,14 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
               <Stack direction="row" alignItems="center" gap={1}>
                 <Chip
                   label={status.label}
-                  color={status.color}
+                  color="default"
                   size="small"
-                  sx={{ fontWeight: 800 }}
+                  sx={getStatusChipSx(order.status)}
                 />
                 <Typography
                   variant="subtitle2"
                   fontWeight={900}
-                  color="primary.main"
-                  sx={{ minWidth: 72, textAlign: "right" }}
+                  sx={{ color: "#2f6a43", minWidth: 72, textAlign: "right" }}
                 >
                   ฿{Number(order.total).toLocaleString()}
                 </Typography>
@@ -163,6 +141,10 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
 
             {/* Collapsible body */}
             <Collapse in={isOpen} timeout="auto" unmountOnExit>
+              <Box sx={{ mx: 2.5, mt: 2.25, mb: 1 }}>
+                <OrderStatusTimeline status={order.status} compact />
+              </Box>
+
               {/* Items */}
               <Stack divider={<Divider />} sx={{ px: 2.5, py: 0.5 }}>
                 {order.items.map((item) => (
@@ -253,7 +235,7 @@ export default function OrdersClient({ orders }: { orders: Order[] }) {
                   >
                     <Chip
                       label="แจ้งชำระเงิน"
-                      color="primary"
+                      color="warning"
                       size="small"
                       clickable
                       sx={{ fontWeight: 700 }}

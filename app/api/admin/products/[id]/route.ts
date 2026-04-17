@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth";
 import path from "path";
 import fs from "fs";
-
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") return null;
-  return session;
-}
 
 /** Safely delete a file under public/uploads — prevents path traversal */
 function safeDeleteFile(imageUrl: string) {
@@ -29,8 +22,8 @@ function safeDeleteFile(imageUrl: string) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
   const { id } = await params;
   const body = await req.json();
 
@@ -57,6 +50,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.unitsPerCase !== undefined) data.unitsPerCase = body.unitsPerCase ? Number(body.unitsPerCase) : null;
   if (body.unitLabel !== undefined) data.unitLabel = body.unitLabel || null;
   if (body.caseLabel !== undefined) data.caseLabel = body.caseLabel || null;
+  if (body.sellMode !== undefined) data.sellMode = body.sellMode;
+  if (body.unitPrice !== undefined) data.unitPrice = body.sellMode === "BOTH" && body.unitPrice !== null && body.unitPrice !== "" ? Number(body.unitPrice) : null;
 
   const removedUrls = new Set<string>();
 
@@ -77,7 +72,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.image = nextImages[0] ?? null;
     data.images = {
       deleteMany: {},
-      create: nextImages.map((url, index) => ({ url, sortOrder: index })),
+      create: nextImages.map((url: string, index: number) => ({ url, sortOrder: index })),
     };
   }
 
@@ -103,8 +98,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
   const { id } = await params;
 
   const product = await prisma.product.findUnique({

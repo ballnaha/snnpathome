@@ -80,7 +80,7 @@ const MultiImageUploader = forwardRef<MultiImageUploaderRef, MultiImageUploaderP
       .filter((file) => file.type.startsWith("image/"))
       .slice(0, remainingSlots)
       .map((file) => ({
-        id: `${file.name}-${file.size}-${file.lastModified}`,
+        id: `${file.lastModified}-${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
         file,
         previewUrl: URL.createObjectURL(file),
       }));

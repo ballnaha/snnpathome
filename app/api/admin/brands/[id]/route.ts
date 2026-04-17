@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth";
 import path from "path";
 import fs from "fs";
-
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as any).role !== "ADMIN") return null;
-  return session;
-}
 
 /** Safely delete a file or directory under public/uploads — prevents path traversal */
 function safeDelete(relPath: string) {
@@ -19,11 +12,44 @@ function safeDelete(relPath: string) {
   if (fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
 }
 
+function safeDeleteLogoFile(logoUrl: string | null | undefined) {
+  if (!logoUrl || !logoUrl.startsWith("/uploads/")) return;
+  const relPath = logoUrl.replace(/^\/+/, "").replace(/^uploads\//, "");
+  if (!relPath) return;
+
+  const uploadsRoot = path.join(process.cwd(), "public", "uploads");
+  const target = path.resolve(uploadsRoot, relPath);
+  if (!target.startsWith(uploadsRoot + path.sep) && target !== uploadsRoot) return;
+
+  try {
+    if (fs.existsSync(target)) fs.unlinkSync(target);
+  } catch (error) {
+    console.error("[brands] could not delete logo:", target, error);
+  }
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
   const { id } = await params;
-  const { name, slug, logo, priority } = await req.json();
+  const { name, slug, logo, priority, isActive } = await req.json();
+
+  const existingBrand = await prisma.brand.findUnique({
+    where: { id },
+    select: { logo: true },
+  });
+
+  if (!existingBrand) {
+    return NextResponse.json({ error: "ไม่พบแบรนด์" }, { status: 404 });
+  }
+
+  let removedLogoUrl: string | null = null;
+  if (logo !== undefined) {
+    const nextLogo = logo || null;
+    if (existingBrand.logo && existingBrand.logo !== nextLogo) {
+      removedLogoUrl = existingBrand.logo;
+    }
+  }
 
   try {
     const brand = await prisma.brand.update({
@@ -33,9 +59,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(slug !== undefined && { slug }),
         ...(logo !== undefined && { logo: logo || null }),
         ...(priority !== undefined && { priority: Number(priority) }),
+        ...(isActive !== undefined && { isActive }),
       },
       include: { _count: { select: { products: true } } },
     });
+    if (removedLogoUrl) safeDeleteLogoFile(removedLogoUrl);
     return NextResponse.json(brand);
   } catch {
     return NextResponse.json({ error: "ชื่อหรือ slug ซ้ำ" }, { status: 409 });
@@ -43,8 +71,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
   const { id } = await params;
 
   // Fetch brand info before deletion for cleanup

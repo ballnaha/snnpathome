@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth";
 
 const DEFAULT_ID = "default";
-
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") return null;
-  return session;
-}
 
 function normalizeUrl(value: unknown) {
   if (typeof value !== "string") return null;
@@ -24,8 +17,8 @@ function normalizeText(value: unknown) {
 }
 
 export async function GET() {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
   const settings = await prisma.siteSetting.upsert({
     where: { id: DEFAULT_ID },
@@ -37,8 +30,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
   const body = await req.json();
   const settings = await prisma.siteSetting.upsert({

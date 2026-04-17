@@ -2,15 +2,18 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Box, Typography, Paper, Stack, Button, IconButton, TextField,
+  Box, Grid, Typography, Paper, Stack, Button, IconButton, TextField,
   InputAdornment, Chip, CircularProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, Switch, FormControlLabel,
   Select, MenuItem, FormControl, InputLabel, Avatar, Tooltip,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  ToggleButton, ToggleButtonGroup,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
 } from "@mui/material";
 import { Add, Edit2, Trash, SearchNormal1, Shop, TickCircle, CloseCircle, Gallery } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
 import MultiImageUploader, { MultiImageUploaderRef } from "@/components/MultiImageUploader";
+import ConfirmActionDialog from "@/components/ConfirmActionDialog";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface Brand { id: string; name: string; }
 interface Product {
@@ -18,10 +21,11 @@ interface Product {
   image: string | null; stock: number; isActive: boolean; isBestSeller: boolean; brandId: string;
   brand: { name: string };
   unitsPerCase: number | null; unitLabel: string | null; caseLabel: string | null;
+  sellMode: string; unitPrice: number | null;
   images?: { id: string; url: string; sortOrder: number }[];
 }
 
-const EMPTY_FORM = { name: "", slug: "", description: "", price: 0, discount: "", image: "", images: [] as string[], stock: 0, isActive: true, isBestSeller: false, brandId: "", unitsPerCase: "", unitLabel: "", caseLabel: "" };
+const EMPTY_FORM = { name: "", slug: "", description: "", price: 0, discount: "", image: "", images: [] as string[], stock: 999, isActive: true, isBestSeller: false, brandId: "", unitsPerCase: "", unitLabel: "", caseLabel: "", sellMode: "CASE_ONLY", unitPrice: "" };
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -39,6 +43,11 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [toggleConfirm, setToggleConfirm] = useState<{ productId: string; nextActive: boolean } | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const uploaderRef = useRef<MultiImageUploaderRef>(null);
 
   // Build upload endpoint based on current form brand only (not slug — avoids broken paths on rename)
@@ -64,6 +73,8 @@ export default function AdminProductsPage() {
     return matchSearch && matchBrand;
   });
 
+  const paginated = filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
   const openCreate = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
@@ -77,7 +88,7 @@ export default function AdminProductsPage() {
       : p.image
         ? [p.image]
         : [];
-    setForm({ name: p.name, slug: p.slug, description: p.description ?? "", price: p.price, discount: p.discount !== null ? String(p.discount) : "", image: p.image ?? "", images: galleryImages, stock: p.stock, isActive: p.isActive, isBestSeller: p.isBestSeller, brandId: p.brandId, unitsPerCase: p.unitsPerCase !== null ? String(p.unitsPerCase) : "", unitLabel: p.unitLabel ?? "", caseLabel: p.caseLabel ?? "" });
+    setForm({ name: p.name, slug: p.slug, description: p.description ?? "", price: p.price, discount: p.discount !== null ? String(p.discount) : "", image: p.image ?? "", images: galleryImages, stock: p.stock, isActive: p.isActive, isBestSeller: p.isBestSeller, brandId: p.brandId, unitsPerCase: p.unitsPerCase !== null ? String(p.unitsPerCase) : "", unitLabel: p.unitLabel ?? "", caseLabel: p.caseLabel ?? "", sellMode: p.sellMode, unitPrice: p.unitPrice !== null ? String(p.unitPrice) : "" });
     setDialogOpen(true);
   };
 
@@ -92,7 +103,7 @@ export default function AdminProductsPage() {
     setSaving(true);
     try {
       const imageUrls = await uploaderRef.current?.upload() ?? form.images;
-      const payload = { ...form, image: imageUrls[0] ?? "", images: imageUrls, price: salePrice, discount: regularPrice, stock: Number(form.stock), unitsPerCase: form.unitsPerCase !== "" ? Number(form.unitsPerCase) : null, unitLabel: form.unitLabel || null, caseLabel: form.caseLabel || null, isBestSeller: form.isBestSeller };
+      const payload = { ...form, image: imageUrls[0] ?? "", images: imageUrls, price: salePrice, discount: regularPrice, stock: Number(form.stock), unitsPerCase: form.unitsPerCase !== "" ? Number(form.unitsPerCase) : null, unitLabel: form.unitLabel || null, caseLabel: form.caseLabel || null, sellMode: form.sellMode, unitPrice: form.sellMode === "BOTH" && form.unitPrice !== "" ? Number(form.unitPrice) : null, isBestSeller: form.isBestSeller };
       const res = editingId
         ? await fetch(`/api/admin/products/${editingId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
         : await fetch("/api/admin/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -106,16 +117,49 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-    if (res.ok) { showSnackbar("ลบสำเร็จ", "success"); load(); }
-    else showSnackbar("เกิดข้อผิดพลาด", "error");
-    setDeleteConfirm(null);
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        showSnackbar("ลบสำเร็จ", "success");
+        setDeleteConfirm(null);
+        load();
+      } else {
+        showSnackbar("เกิดข้อผิดพลาด", "error");
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleToggle = async (p: Product) => {
-    await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !p.isActive }) });
-    load();
+    setUpdatingId(p.id);
+    try {
+      const res = await fetch(`/api/admin/products/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !p.isActive }) });
+      if (res.ok) {
+        setToggleConfirm(null);
+        load();
+        return;
+      }
+
+      showSnackbar("เปลี่ยนสถานะสินค้าไม่สำเร็จ", "error");
+    } finally {
+      setUpdatingId(null);
+    }
   };
+
+  const requestToggle = (product: Product) => {
+    if (product.isActive) {
+      setToggleConfirm({ productId: product.id, nextActive: false });
+      return;
+    }
+
+    void handleToggle(product);
+  };
+
+  const confirmedProduct = toggleConfirm
+    ? products.find((product) => product.id === toggleConfirm.productId) ?? null
+    : null;
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 } }}>
@@ -133,31 +177,25 @@ export default function AdminProductsPage() {
         <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ xs: "stretch", md: "center" }}>
           <TextField
             size="small" placeholder="ค้นหาสินค้า..."
-            value={search} onChange={(e) => setSearch(e.target.value)}
+            value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             sx={{ width: { xs: "100%", md: 300 }, "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchNormal1 size="18" color="#999" /></InputAdornment> }}
           />
-          <Stack direction="row" gap={1} flexWrap="wrap">
-            <Chip
-              label="ทั้งหมด"
-              clickable
-              onClick={() => setFilterBrand("")}
-              color={filterBrand === "" ? "primary" : "default"}
-              variant={filterBrand === "" ? "filled" : "outlined"}
-              sx={{ fontWeight: 700 }}
-            />
-            {brands.map((b) => (
-              <Chip
-                key={b.id}
-                label={b.name}
-                clickable
-                onClick={() => setFilterBrand(filterBrand === b.id ? "" : b.id)}
-                color={filterBrand === b.id ? "primary" : "default"}
-                variant={filterBrand === b.id ? "filled" : "outlined"}
-                sx={{ fontWeight: 700 }}
-              />
-            ))}
-          </Stack>
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 240 } }}>
+            <InputLabel id="brand-filter-label">กรองตามแบรนด์</InputLabel>
+            <Select
+              labelId="brand-filter-label"
+              value={filterBrand}
+              label="กรองตามแบรนด์"
+              onChange={(e) => { setFilterBrand(e.target.value); setPage(0); }}
+              sx={{ borderRadius: 3 }}
+            >
+              <MenuItem value="">ทั้งหมด</MenuItem>
+              {brands.map((b) => (
+                <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Stack>
       </Paper>
 
@@ -178,7 +216,7 @@ export default function AdminProductsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filtered.map((p) => (
+                {paginated.map((p) => (
                   <TableRow key={p.id} hover>
                     <TableCell>
                       <Stack direction="row" alignItems="center" gap={1.5}>
@@ -195,19 +233,23 @@ export default function AdminProductsPage() {
                     </TableCell>
                     <TableCell><Chip label={p.brand.name} size="small" sx={{ fontWeight: 700, bgcolor: "grey.100" }} /></TableCell>
                     <TableCell align="right">
-                      <Typography fontWeight={800}>ราคาขาย ฿{p.price.toLocaleString()}</Typography>
-                      {p.discount && <Typography variant="caption" display="block" color="text.secondary" sx={{ textDecoration: "line-through" }}>ราคาปกติ ฿{p.discount.toLocaleString()}</Typography>}
-                      {p.unitsPerCase && <Typography variant="caption" display="block" color="text.secondary">1 {p.caseLabel || "ลัง"} = {p.unitsPerCase} {p.unitLabel || "ชิ้น"}</Typography>}
+                      <Typography fontWeight={800}>
+                        ฿{p.price.toLocaleString()}
+                        <Typography component="span" variant="caption" color="text.secondary"> / {p.sellMode === "UNIT_ONLY" ? (p.unitLabel || "ชิ้น") : (p.caseLabel || "ลัง")}</Typography>
+                      </Typography>
+                      {p.discount && <Typography variant="caption" display="block" color="text.secondary" sx={{ textDecoration: "line-through" }}>฿{p.discount.toLocaleString()}</Typography>}
+                      {p.unitsPerCase && <Typography variant="caption" display="block" color="text.disabled">1 {p.caseLabel || "ลัง"} = {p.unitsPerCase} {p.unitLabel || "ชิ้น"}</Typography>}
+                      {p.sellMode === "BOTH" && p.unitPrice != null && <Typography variant="caption" display="block" color="primary.main" fontWeight={700}>฿{p.unitPrice.toLocaleString()} / {p.unitLabel || "ชิ้น"}</Typography>}
                     </TableCell>
                     <TableCell align="right">
                       <Chip label={p.stock} size="small" color={p.stock > 10 ? "success" : p.stock > 0 ? "warning" : "error"} sx={{ fontWeight: 800 }} />
                     </TableCell>
                     <TableCell>
-                      <Switch checked={p.isActive} onChange={() => handleToggle(p)} color="primary" size="small" />
+                      <Switch checked={p.isActive} disabled={updatingId === p.id} onChange={() => requestToggle(p)} color="primary" size="small" />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" gap={0.5} justifyContent="flex-end">
-                        <Tooltip title="แก้ไข"><IconButton size="small" onClick={() => openEdit(p)}><Edit2 size="16" color="#666" /></IconButton></Tooltip>
+                        <Tooltip title="แก้ไข"><IconButton size="small" onClick={() => openEdit(p)}><Edit2 size="16" color="#475569" /></IconButton></Tooltip>
                         <Tooltip title="ลบ"><IconButton size="small" onClick={() => setDeleteConfirm(p.id)}><Trash size="16" color="#d71414" /></IconButton></Tooltip>
                       </Stack>
                     </TableCell>
@@ -220,57 +262,236 @@ export default function AdminProductsPage() {
             </Table>
           </TableContainer>
         )}
+        {!loading && filtered.length > 0 && (
+          <TablePagination
+            component="div"
+            count={filtered.length}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            labelRowsPerPage="แสดง:"
+            labelDisplayedRows={({ from, to, count }) => `${from}–${to} จาก ${count}`}
+            sx={{ borderTop: "1px solid", borderColor: "grey.100" }}
+          />
+        )}
       </Paper>
 
       {/* Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 900 }}>{editingId ? "แก้ไขสินค้า" : "เพิ่มสินค้า"}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} pt={1}>
-            <MultiImageUploader
-                ref={uploaderRef}
-                value={form.images}
-                onChange={(urls) => setForm((p) => ({ ...p, images: urls, image: urls[0] ?? "" }))}
-                endpoint={uploadEndpoint}
-              />
-            <TextField label="ชื่อสินค้า" fullWidth value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value, slug: slugify(e.target.value) }))} />
-            <TextField label="Slug (URL)" fullWidth value={form.slug} onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))} />
-            <FormControl fullWidth>
-              <InputLabel>แบรนด์</InputLabel>
-              <Select value={form.brandId} label="แบรนด์" onChange={(e) => setForm((p) => ({ ...p, brandId: e.target.value }))}>
-                {brands.map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2 }}>
-              <TextField label="ราคาขาย (ลูกค้าจ่ายจริง)" type="number" inputProps={{ min: 0 }} value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: Number(e.target.value) }))} helperText="ราคาที่แสดงเป็นตัวหลักบนหน้าเว็บ" />
-              <TextField label="ราคาปกติเดิม" type="number" inputProps={{ min: 0 }} value={form.discount} onChange={(e) => setForm((p) => ({ ...p, discount: e.target.value }))} placeholder="ไม่ระบุ" helperText="ใช้สำหรับราคาโดนขีดฆ่า ต้องมากกว่าราคาขาย" />
-              <TextField label="สต็อก" type="number" inputProps={{ min: 0 }} value={form.stock} onChange={(e) => setForm((p) => ({ ...p, stock: Number(e.target.value) }))} />
-            </Box>
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2 }}>
-              <TextField label="จำนวนต่อลัง" type="number" inputProps={{ min: 1 }} value={form.unitsPerCase} onChange={(e) => setForm((p) => ({ ...p, unitsPerCase: e.target.value }))} placeholder="เช่น 24" />
-              <TextField label="หน่วยย่อย" value={form.unitLabel} onChange={(e) => setForm((p) => ({ ...p, unitLabel: e.target.value }))} placeholder="เช่น ซอง" />
-              <TextField label="หน่วยหลัก" value={form.caseLabel} onChange={(e) => setForm((p) => ({ ...p, caseLabel: e.target.value }))} placeholder="เช่น ลัง" />
-            </Box>
-            <TextField label="รายละเอียด" fullWidth multiline rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-            <FormControlLabel control={<Switch checked={form.isBestSeller} onChange={(e) => setForm((p) => ({ ...p, isBestSeller: e.target.checked }))} color="warning" />} label="สินค้าขายดี (Best Seller)" />
-            <FormControlLabel control={<Switch checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} />} label="เปิดขาย" />
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 900, py: 2, px: 3, borderBottom: "1px solid", borderColor: "grey.100" }}>
+          <Stack direction="row" alignItems="center" gap={1.5}>
+            <Shop size="22" color="#d71414" variant="Bold" />
+            {editingId ? "แก้ไขสินค้า" : "เพิ่มสินค้าใหม่"}
           </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <Grid container>
+            {/* Left: Images + Basic info */}
+            <Grid size={{ xs: 12, md: 5 }} sx={{ p: 3, borderRight: { md: "1px solid" }, borderColor: { md: "grey.100" } }}>
+              <Stack spacing={2}>
+                <Typography variant="overline" fontWeight={800} color="text.secondary" lineHeight={1}>ข้อมูลพื้นฐาน</Typography>
+                <MultiImageUploader
+                  ref={uploaderRef}
+                  value={form.images}
+                  onChange={(urls) => setForm((p) => ({ ...p, images: urls, image: urls[0] ?? "" }))}
+                  endpoint={uploadEndpoint}
+                />
+                <TextField
+                  label="ชื่อสินค้า" fullWidth size="small"
+                  value={form.name}
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value, slug: slugify(e.target.value) }))}
+                />
+                <TextField
+                  label="Slug (URL)" fullWidth size="small"
+                  value={form.slug}
+                  onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
+                />
+                <FormControl fullWidth size="small">
+                  <InputLabel>แบรนด์</InputLabel>
+                  <Select value={form.brandId} label="แบรนด์" onChange={(e) => setForm((p) => ({ ...p, brandId: e.target.value }))}>
+                    {brands.map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="รายละเอียดสินค้า" fullWidth multiline rows={4} size="small"
+                  value={form.description}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </Stack>
+            </Grid>
+
+            {/* Right: Packaging + Sell mode + Pricing */}
+            <Grid size={{ xs: 12, md: 7 }} sx={{ p: 3 }}>
+              <Stack spacing={3}>
+
+                {/* Section: บรรจุภัณฑ์ */}
+                <Box>
+                  <Typography variant="overline" fontWeight={800} color="text.secondary" display="block" lineHeight={1} mb={2}>
+                    บรรจุภัณฑ์
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5 }}>
+                      <TextField
+                        label="หน่วยหลัก" size="small"
+                        placeholder="ลัง"
+                        value={form.caseLabel}
+                        onChange={(e) => setForm((p) => ({ ...p, caseLabel: e.target.value }))}
+                        helperText='เช่น "ลัง", "กล่อง"'
+                      />
+                      <TextField
+                        label="หน่วยย่อย" size="small"
+                        placeholder="ซอง"
+                        value={form.unitLabel}
+                        onChange={(e) => setForm((p) => ({ ...p, unitLabel: e.target.value }))}
+                        helperText='เช่น "ซอง", "ชิ้น"'
+                      />
+                      <TextField
+                        label="จำนวน / หน่วยหลัก" size="small" type="number"
+                        inputProps={{ min: 1 }}
+                        placeholder="24"
+                        value={form.unitsPerCase}
+                        onChange={(e) => setForm((p) => ({ ...p, unitsPerCase: e.target.value }))}
+                        helperText="เช่น 1 ลัง = 24 ซอง"
+                      />
+                    </Box>
+                    {form.caseLabel && form.unitLabel && form.unitsPerCase && (
+                      <Box sx={{ px: 2, py: 1, bgcolor: "#f0f9ff", borderRadius: 2, border: "1px solid #bae6fd" }}>
+                        <Typography variant="body2" color="#0369a1" fontWeight={700}>
+                          1 {form.caseLabel} = {form.unitsPerCase} {form.unitLabel}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </Box>
+
+                {/* Section: รูปแบบการขาย */}
+                <Box>
+                  <Typography variant="overline" fontWeight={800} color="text.secondary" display="block" lineHeight={1} mb={2}>
+                    รูปแบบการขาย
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={form.sellMode}
+                    exclusive
+                    onChange={(_, v) => v && setForm((p) => ({ ...p, sellMode: v, unitPrice: v !== "BOTH" ? "" : p.unitPrice }))}
+                    fullWidth
+                    sx={{
+                      gap: 1,
+                      "& .MuiToggleButtonGroup-grouped": { border: "1px solid !important", borderRadius: "10px !important", mx: 0 },
+                      "& .MuiToggleButton-root": {
+                        py: 1.5, flex: 1, fontWeight: 700, fontSize: "0.82rem",
+                        color: "text.secondary", borderColor: "grey.300 !important",
+                        "&.Mui-selected": { bgcolor: "primary.main", color: "white", borderColor: "primary.main !important" },
+                      },
+                    }}
+                  >
+                    <ToggleButton value="CASE_ONLY">ขายเป็น{form.caseLabel || "ลัง"}</ToggleButton>
+                    <ToggleButton value="UNIT_ONLY">ขายเป็น{form.unitLabel || "ซอง"}</ToggleButton>
+                    <ToggleButton value="BOTH">ขายได้ทั้งคู่</ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+
+                {/* Section: ราคาและสต็อก */}
+                <Box>
+                  <Typography variant="overline" fontWeight={800} color="text.secondary" display="block" lineHeight={1} mb={2}>
+                    ราคาและสต็อก
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                      <TextField
+                        label={`ราคาขาย / ${form.sellMode === "UNIT_ONLY" ? (form.unitLabel || "ซอง") : (form.caseLabel || "ลัง")}`}
+                        size="small" type="number" inputProps={{ min: 0 }}
+                        value={form.price}
+                        onChange={(e) => setForm((p) => ({ ...p, price: Number(e.target.value) }))}
+                        InputProps={{ startAdornment: <InputAdornment position="start">฿</InputAdornment> }}
+                        helperText="ราคาแสดงหลักบนเว็บ"
+                      />
+                      {form.sellMode === "BOTH" ? (
+                        <TextField
+                          label={`ราคาขาย / ${form.unitLabel || "ซอง"}`}
+                          size="small" type="number" inputProps={{ min: 0, step: "0.01" }}
+                          value={form.unitPrice}
+                          onChange={(e) => setForm((p) => ({ ...p, unitPrice: e.target.value }))}
+                          InputProps={{ startAdornment: <InputAdornment position="start">฿</InputAdornment> }}
+                          helperText={`ซื้อทีละ${form.unitLabel || "ซอง"}`}
+                        />
+                      ) : (
+                        <TextField
+                          label="ราคาปกติ (ขีดฆ่า)"
+                          size="small" type="number" inputProps={{ min: 0 }}
+                          value={form.discount}
+                          onChange={(e) => setForm((p) => ({ ...p, discount: e.target.value }))}
+                          placeholder="ไม่ระบุ"
+                          InputProps={{ startAdornment: <InputAdornment position="start">฿</InputAdornment> }}
+                          helperText="ต้องมากกว่าราคาขาย"
+                        />
+                      )}
+                    </Box>
+                    {form.sellMode === "BOTH" && (
+                      <TextField
+                        label="ราคาปกติ (ขีดฆ่า)"
+                        size="small" type="number" inputProps={{ min: 0 }}
+                        value={form.discount}
+                        onChange={(e) => setForm((p) => ({ ...p, discount: e.target.value }))}
+                        placeholder="ไม่ระบุ"
+                        fullWidth
+                        InputProps={{ startAdornment: <InputAdornment position="start">฿</InputAdornment> }}
+                        helperText="ราคาโดนขีดฆ่า ต้องมากกว่าราคาขาย"
+                      />
+                    )}
+                    <TextField
+                      label="สต็อก" size="small" type="number" inputProps={{ min: 0 }}
+                      value={form.stock}
+                      onChange={(e) => setForm((p) => ({ ...p, stock: Number(e.target.value) }))}
+                      helperText="ใส่ 0 = หมดสต็อก"
+                      fullWidth
+                    />
+                  </Stack>
+                </Box>
+
+                {/* Settings */}
+                <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+                  <FormControlLabel
+                    control={<Switch checked={form.isBestSeller} onChange={(e) => setForm((p) => ({ ...p, isBestSeller: e.target.checked }))} color="warning" size="small" />}
+                    label={<Typography variant="body2" fontWeight={700}>สินค้าขายดี</Typography>}
+                  />
+                  <FormControlLabel
+                    control={<Switch checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} size="small" />}
+                    label={<Typography variant="body2" fontWeight={700}>เปิดขาย</Typography>}
+                  />
+                </Box>
+
+              </Stack>
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, pt: 0 }}>
-          <Button onClick={() => setDialogOpen(false)} startIcon={<CloseCircle size="16" color="currentColor" />} sx={{ fontWeight: 700 }}>ยกเลิก</Button>
-          <Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <TickCircle size="16" color="white" />} sx={{ fontWeight: 800, borderRadius: 2.5 }}>บันทึก</Button>
+        <DialogActions sx={{ p: 2.5, borderTop: "1px solid", borderColor: "grey.100" }}>
+          <Button onClick={() => setDialogOpen(false)} startIcon={<CloseCircle size="16" color="#64748b" />} sx={{ fontWeight: 700 }}>ยกเลิก</Button>
+          <Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <TickCircle size="16" color="white" />} sx={{ fontWeight: 800, borderRadius: 2.5, px: 3 }}>บันทึก</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirm */}
-      <Dialog open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 900 }}>ยืนยันการลบ</DialogTitle>
-        <DialogContent><Typography>คุณต้องการลบสินค้านี้ใช่หรือไม่?</Typography></DialogContent>
-        <DialogActions sx={{ p: 2.5, pt: 0 }}>
-          <Button onClick={() => setDeleteConfirm(null)} sx={{ fontWeight: 700 }}>ยกเลิก</Button>
-          <Button variant="contained" color="error" onClick={() => deleteConfirm && handleDelete(deleteConfirm)} sx={{ fontWeight: 800, borderRadius: 2.5 }}>ลบ</Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={!!deleteConfirm}
+        message="คุณต้องการลบสินค้านี้ใช่หรือไม่?"
+        loading={Boolean(deleteConfirm && deletingId === deleteConfirm)}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteConfirm && void handleDelete(deleteConfirm)}
+      />
+
+      <ConfirmActionDialog
+        open={!!toggleConfirm}
+        title="ยืนยันการปิดขายสินค้า"
+        message={confirmedProduct ? `คุณต้องการปิดขายสินค้า ${confirmedProduct.name} ใช่หรือไม่? เมื่่อปิดแล้วสินค้านี้จะไม่แสดงให้ลูกค้าสั่งซื้อ` : "คุณต้องการปิดขายสินค้านี้ใช่หรือไม่?"}
+        confirmText="ปิดขาย"
+        confirmColor="warning"
+        loadingText="กำลังอัปเดตสถานะ..."
+        loading={Boolean(toggleConfirm && updatingId === toggleConfirm.productId)}
+        onClose={() => setToggleConfirm(null)}
+        onConfirm={() => confirmedProduct && void handleToggle(confirmedProduct)}
+      />
     </Box>
   );
 }

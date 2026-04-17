@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Local Development
 
-## Getting Started
-
-First, run the development server:
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs on port `5005` and listens on all interfaces for local network testing.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Local machine: `http://localhost:5005`
+- LAN / mobile testing: `http://192.168.100.88:5005`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js 16 blocks cross-origin access to dev-only assets by default, so `next.config.ts` includes `allowedDevOrigins` for `192.168.100.88` during local testing.
 
-## Learn More
+Google OAuth does not work with a raw private IP callback/origin such as `http://192.168.100.88:5005`. For Google login in development:
 
-To learn more about Next.js, take a look at the following resources:
+- Use `http://localhost:5005` on the same machine
+- Use a public HTTPS tunnel/domain on mobile or another device
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Auth URL
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For local mobile testing, `NEXTAUTH_URL` is set in `.env.local`.
 
-## Deploy on Vercel
+```env
+NEXTAUTH_URL=http://192.168.100.88:5005
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+If your machine IP changes, update `.env.local` before testing login or session flows on another device.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If you need Google login on mobile, set `NEXTAUTH_URL` to a public HTTPS URL and add that exact origin plus callback URL to the Google Cloud OAuth client settings.

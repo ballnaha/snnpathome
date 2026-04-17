@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
+import { verifyOrderAccessToken } from "@/lib/order-access";
 
 // Max allowed base64 payload ~5 MB decoded → ~6.8 MB encoded
 const MAX_BYTES = 7 * 1024 * 1024;
@@ -12,11 +13,26 @@ export async function PATCH(
 ) {
   try {
     const { orderNumber } = await params;
+    const body = (await req.json()) as { slipUrl?: string; accessToken?: string };
+    const accessToken = body.accessToken?.trim();
+
+    if (!accessToken) {
+      return NextResponse.json({ error: "กรุณายืนยันคำสั่งซื้อก่อนอัปโหลดสลิป" }, { status: 401 });
+    }
+
+    const claims = verifyOrderAccessToken(accessToken);
+    if (!claims || claims.orderNumber !== orderNumber) {
+      return NextResponse.json({ error: "สิทธิ์การเข้าถึงหมดอายุหรือไม่ถูกต้อง" }, { status: 403 });
+    }
 
     // Validate order exists
-    const order = await prisma.order.findUnique({ where: { orderNumber } });
+    const order = await prisma.order.findUnique({ where: { id: claims.orderId } });
     if (!order) {
       return NextResponse.json({ error: "ไม่พบคำสั่งซื้อ" }, { status: 404 });
+    }
+
+    if (order.orderNumber !== orderNumber) {
+      return NextResponse.json({ error: "สิทธิ์การเข้าถึงไม่ตรงกับคำสั่งซื้อ" }, { status: 403 });
     }
 
     // Only allow slip upload for PENDING orders
@@ -32,8 +48,7 @@ export async function PATCH(
       return NextResponse.json({ error: "ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 5 MB)" }, { status: 413 });
     }
 
-    const body = await req.json();
-    const { slipUrl } = body as { slipUrl?: string };
+    const { slipUrl } = body;
 
     if (!slipUrl || typeof slipUrl !== "string") {
       return NextResponse.json({ error: "ข้อมูลสลิปไม่ถูกต้อง" }, { status: 400 });
@@ -60,7 +75,7 @@ export async function PATCH(
     const publicPath = `/uploads/${orderNumber}/${filename}`;
 
     await prisma.order.update({
-      where: { orderNumber },
+      where: { id: order.id },
       data: { slipUrl: publicPath },
     });
 

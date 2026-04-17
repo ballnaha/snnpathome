@@ -23,11 +23,13 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeSlash, Google, DirectRight, User, Sms, Call, Lock } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
+import { getGoogleOAuthDevHint, isUnsupportedGoogleOAuthOrigin } from "@/lib/google-oauth-origin";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [googleHint, setGoogleHint] = React.useState<string | null>(null);
   const { showSnackbar } = useSnackbar();
 
   const [formData, setFormData] = React.useState({
@@ -37,6 +39,10 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: ""
   });
+
+  React.useEffect(() => {
+    setGoogleHint(getGoogleOAuthDevHint(window.location.href));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -113,8 +119,11 @@ export default function RegisterPage() {
         }, 1500);
       }
       
-    } catch (error: any) {
-      showSnackbar(error.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง", "error");
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง";
+      showSnackbar(message, "error");
     } finally {
       setLoading(false);
     }
@@ -305,8 +314,14 @@ export default function RegisterPage() {
             <Button 
                 fullWidth 
                 variant="outlined" 
-                onClick={() => signIn("google", { callbackUrl: "/" })}
-                disabled={loading}
+                onClick={() => {
+                  if (isUnsupportedGoogleOAuthOrigin(window.location.href)) {
+                    return;
+                  }
+
+                  signIn("google", { callbackUrl: "/" });
+                }}
+                disabled={loading || !!googleHint}
                 startIcon={<Google variant="Bold" color={loading ? "#ccc" : "#EA4335"} size="18" />}
                 sx={{ 
                   py: 1.2, 
@@ -320,6 +335,11 @@ export default function RegisterPage() {
               >
                 Sign up with Google
               </Button>
+              {googleHint && (
+                <Typography variant="caption" color="warning.main" sx={{ mt: 1, display: "block" }}>
+                  {googleHint}
+                </Typography>
+              )}
 
             <Box textAlign="center" mt={3}>
                 <Typography variant="caption" color="text.secondary">

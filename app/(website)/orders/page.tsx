@@ -55,7 +55,7 @@ export default async function OrdersPage() {
       <Box sx={{ bgcolor: "#eee", py: { xs: 4, md: 6 }, textAlign: "center" }}>
         <Container maxWidth="md">
           <Stack direction="row" alignItems="center" justifyContent="center" gap={1.5} mb={1}>
-            <ClipboardText size="28" color="#d71414" variant="Bold" />
+            
             <Typography variant="h2" fontWeight="900" sx={{ color: "#333", fontSize: { xs: "1.4rem", md: "2rem" } }}>
               ประวัติการสั่งซื้อ
             </Typography>

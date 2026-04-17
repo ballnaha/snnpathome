@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") return null;
-  return session;
-}
+import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth";
 
 export async function GET() {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
   const products = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
@@ -21,14 +14,14 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(products.map((p) => ({ ...p, price: Number(p.price), discount: p.discount !== null ? Number(p.discount) : null })));
+  return NextResponse.json(products.map((p) => ({ ...p, price: Number(p.price), discount: p.discount !== null ? Number(p.discount) : null, unitPrice: p.unitPrice !== null ? Number(p.unitPrice) : null })));
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
-  const { name, slug, description, price, discount, image, images, stock, isActive, brandId, unitsPerCase, unitLabel, caseLabel, isBestSeller } = await req.json();
+  const { name, slug, description, price, discount, image, images, stock, isActive, brandId, unitsPerCase, unitLabel, caseLabel, isBestSeller, sellMode, unitPrice } = await req.json();
   if (!name || !slug || !brandId) return NextResponse.json({ error: "ข้อมูลไม่ครบ" }, { status: 400 });
 
   const imageUrls = Array.isArray(images)
@@ -53,6 +46,8 @@ export async function POST(req: NextRequest) {
       unitsPerCase: unitsPerCase ? Number(unitsPerCase) : null,
       unitLabel: unitLabel || null,
       caseLabel: caseLabel || null,
+      sellMode: sellMode ?? "CASE_ONLY",
+      unitPrice: sellMode === "BOTH" && unitPrice !== null && unitPrice !== "" ? Number(unitPrice) : null,
       images: {
         create: imageUrls.map((url, index) => ({ url, sortOrder: index })),
       },

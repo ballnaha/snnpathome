@@ -11,8 +11,8 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
 
-  const product = await prisma.product.findUnique({
-    where: { slug },
+  const product = await prisma.product.findFirst({
+    where: { slug, isActive: true, brand: { isActive: true } },
     include: { brand: true },
   });
 
@@ -42,7 +42,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const [product, siteSettings] = await Promise.all([
     prisma.product.findUnique({
-      where: { slug, isActive: true },
+      where: { slug, isActive: true, brand: { isActive: true } },
       include: { brand: true, images: { orderBy: { sortOrder: "asc" } } },
     }),
     prisma.siteSetting.findUnique({ where: { id: "default" } }),
@@ -51,7 +51,7 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product) notFound();
 
   const relatedProducts = await prisma.product.findMany({
-    where: { brandId: product.brandId, isActive: true, NOT: { id: product.id } },
+    where: { brandId: product.brandId, isActive: true, brand: { isActive: true }, NOT: { id: product.id } },
     orderBy: { createdAt: "desc" },
     take: 4,
   });
@@ -73,6 +73,8 @@ export default async function ProductDetailPage({ params }: Props) {
         unitsPerCase: product.unitsPerCase ?? null,
         unitLabel: product.unitLabel ?? null,
         caseLabel: product.caseLabel ?? null,
+        sellMode: product.sellMode,
+        unitPrice: product.unitPrice ? product.unitPrice.toNumber() : null,
         brand: { name: product.brand.name, slug: product.brand.slug },
       }}
       relatedProducts={relatedProducts.map((p) => ({

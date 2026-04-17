@@ -11,7 +11,7 @@ import { useSession } from "next-auth/react";
 const navItems = [
   { label: "หน้าแรก", href: "/", icon: Home2 },
   { label: "สินค้า", href: "/all-products", icon: ShoppingBag },
-  { label: "ติดตามสั่งซื้อ", href: "/orders", icon: ClipboardText },
+  { label: "ติดตามสั่งซื้อ", href: "/track-order", icon: ClipboardText },
   { label: "ตะกร้า", href: "#cart", icon: ShoppingCart },
   { label: "โปรไฟล์", href: "/login", icon: Profile },
 ];
@@ -20,6 +20,18 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const { totalItems, openDrawer } = useCart();
   const { data: session } = useSession();
+
+  const isRouteActive = (href: string) => {
+    if (href === "/") {
+      return pathname === href;
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  if (pathname.startsWith("/product/")) {
+    return null;
+  }
 
   return (
     <Box
@@ -47,7 +59,7 @@ export default function MobileBottomNav() {
         const resolvedHref = isProfile ? (loggedIn ? "/profile" : "/login") : item.href;
         const resolvedLabel = isProfile ? (loggedIn ? "โปรไฟล์" : "เข้าสู่ระบบ") : item.label;
         const ResolvedIcon = isProfile ? (loggedIn ? Profile : LoginCurve) : item.icon;
-        const isActive = !isCart && pathname === resolvedHref;
+        const isActive = !isCart && isRouteActive(resolvedHref);
 
         if (isCart) {
           return (

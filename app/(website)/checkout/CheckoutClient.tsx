@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
+  Breadcrumbs,
+  Chip,
   Container,
   Typography,
   Stack,
@@ -20,9 +22,12 @@ import {
 } from "@mui/material";
 import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
-import { ArrowLeft2, SecuritySafe, Cards, TruckFast, Trash, TicketDiscount, Add, Minus } from "iconsax-react";
+import { ArrowLeft2, ArrowRight2, SecuritySafe, Cards, TruckFast, Trash, TicketDiscount, Add, Minus } from "iconsax-react";
 import Link from "next/link";
 import { useSnackbar } from "@/components/SnackbarProvider";
+import type { PublicCoupon } from "@/lib/public-coupons";
+import { formatCouponBenefit, formatCouponCondition } from "@/lib/public-coupons";
+import BankAccountCard from "@/components/BankAccountCard";
 
 interface ProfileData {
   firstName: string;
@@ -36,17 +41,10 @@ interface ProfileData {
   postcode: string;
 }
 
-const DEFAULT_BANK_ACCOUNT_INFO = [
-  "ธนาคาร: ไทยพาณิชย์ (SCB)",
-  "ชื่อบัญชี: บริษัท ศรีนานาพร มาร์เก็ตติ้ง จำกัด(มหาชน)",
-  "เลขที่บัญชี: 366-415149-5",
-].join("\n");
-
-export default function CheckoutClient({ profile, bankAccountInfo }: { profile: ProfileData; bankAccountInfo?: string | null }) {
+export default function CheckoutClient({ profile, bankAccountInfo, availableCoupons }: { profile: ProfileData; bankAccountInfo?: string | null; availableCoupons: PublicCoupon[] }) {
   const { items, totalPrice, clearCart, removeItem, updateQuantity } = useCart();
   const router = useRouter();
   const { showSnackbar } = useSnackbar();
-  const bankInfoText = (bankAccountInfo && bankAccountInfo.trim()) || DEFAULT_BANK_ACCOUNT_INFO;
 
   const [email, setEmail] = useState(profile.email);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +52,9 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
   const [discountCode, setDiscountCode] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountMessage, setDiscountMessage] = useState("");
+  const [discountMessageTone, setDiscountMessageTone] = useState<"success" | "error" | "info">("info");
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
   const [postcode, setPostcode] = useState(profile.postcode);
   const [postcodeError, setPostcodeError] = useState("");
@@ -73,7 +74,7 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
   const [shippingLoading, setShippingLoading] = useState(true);
   const [selectedShippingId, setSelectedShippingId] = useState<string>("");
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetch("/api/shipping-methods")
       .then((r) => r.json())
       .then((data: ShippingMethod[]) => {
@@ -84,6 +85,9 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
   }, []);
 
   const selectedMethod = shippingMethods.find((m) => m.id === selectedShippingId) ?? null;
+  const selectedAvailableCoupon = availableCoupons.find(
+    (coupon) => coupon.code.toUpperCase() === discountCode.trim().toUpperCase()
+  ) ?? null;
   const effectiveShippingCost =
     selectedMethod === null
       ? 0
@@ -103,18 +107,95 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
     return "";
   };
 
-  const handleApplyDiscount = () => {
-    if (discountCode.trim().toUpperCase() === "SNNP10") {
-      setDiscountAmount(10);
-      setDiscountApplied(true);
-    } else {
-      setDiscountAmount(0);
+  const handleApplyDiscount = async () => {
+    const code = discountCode.trim();
+    if (!code) {
       setDiscountApplied(false);
+      setDiscountAmount(0);
+      setDiscountMessage("กรุณากรอกโค้ดส่วนลด");
+      setDiscountMessageTone("error");
+      return;
+    }
+
+    setIsApplyingDiscount(true);
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: totalPrice }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setDiscountApplied(false);
+        setDiscountAmount(0);
+        setDiscountMessage(typeof data?.error === "string" ? data.error : "โค้ดส่วนลดไม่ถูกต้อง");
+        setDiscountMessageTone("error");
+        return;
+      }
+
+      setDiscountCode(data?.coupon?.code ?? code.toUpperCase());
+      setDiscountAmount(Number(data?.discountAmount ?? 0));
+      setDiscountApplied(true);
+      setDiscountMessage(`ใช้โค้ดส่วนลด "${data?.coupon?.code ?? code.toUpperCase()}" สำเร็จ`);
+      setDiscountMessageTone("success");
+    } catch {
+      setDiscountApplied(false);
+      setDiscountAmount(0);
+      setDiscountMessage("ไม่สามารถตรวจสอบคูปองได้ กรุณาลองใหม่");
+      setDiscountMessageTone("error");
+    } finally {
+      setIsApplyingDiscount(false);
     }
   };
 
+  const handleSelectCoupon = async (code: string) => {
+    setDiscountCode(code);
+    setDiscountMessage("");
+    setDiscountApplied(false);
+    setDiscountAmount(0);
+
+    setIsApplyingDiscount(true);
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: totalPrice }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setDiscountMessage(typeof data?.error === "string" ? data.error : "คูปองนี้ยังใช้ไม่ได้กับยอดปัจจุบัน");
+        setDiscountMessageTone("error");
+        return;
+      }
+
+      setDiscountCode(data?.coupon?.code ?? code.toUpperCase());
+      setDiscountAmount(Number(data?.discountAmount ?? 0));
+      setDiscountApplied(true);
+      setDiscountMessage(`ใช้โค้ดส่วนลด "${data?.coupon?.code ?? code.toUpperCase()}" สำเร็จ`);
+      setDiscountMessageTone("success");
+    } catch {
+      setDiscountMessage("ไม่สามารถตรวจสอบคูปองได้ กรุณาลองใหม่");
+      setDiscountMessageTone("error");
+    } finally {
+      setIsApplyingDiscount(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!discountCode.trim()) {
+      return;
+    }
+
+    setDiscountApplied(false);
+    setDiscountAmount(0);
+    setDiscountMessage("ยอดสินค้าเปลี่ยน กรุณากดใช้งานคูปองอีกครั้ง");
+    setDiscountMessageTone("info");
+  }, [discountCode, totalPrice]);
+
   // If cart is empty, redirect back to products or home
-  React.useEffect(() => {
+  useEffect(() => {
     if (items.length === 0 && !isSuccess) {
       router.push("/all-products");
     }
@@ -166,14 +247,20 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
         return;
       }
 
+      const finalSubtotal = Number(data.subtotal ?? totalPrice);
+      const finalDiscount = Number(data.discount ?? 0);
+      const finalTotal = Number(data.total ?? finalSubtotal + effectiveShippingCost - finalDiscount);
+      const finalDiscountCode = typeof data.discountCode === "string" ? data.discountCode : null;
+
       // Cache snapshot for success page display
       const orderSnapshot = {
         orderNumber: data.orderNumber,
+        accessToken: data.accessToken,
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, image: i.image, quantity: i.quantity })),
-        subtotal: totalPrice,
-        discount: discountAmount,
-        total: totalPrice + effectiveShippingCost - discountAmount,
-        discountCode: discountApplied ? discountCode.toUpperCase() : null,
+        subtotal: finalSubtotal,
+        discount: finalDiscount,
+        total: finalTotal,
+        discountCode: finalDiscountCode,
         createdAt: new Date().toISOString(),
       };
       localStorage.setItem("snnp-last-order", JSON.stringify(orderSnapshot));
@@ -191,8 +278,35 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
   if (items.length === 0) return null; // Prevent flicker before redirect
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fa", py: { xs: 4, md: 8 } }}>
-      <Container maxWidth="lg">
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fa", pb: { xs: 10, md: 8 } }}>
+      <Box sx={{ bgcolor: "#eee", py: { xs: 4, md: 6 }, textAlign: "center" }}>
+        <Container maxWidth="md">
+          <Stack direction="row" alignItems="center" justifyContent="center" gap={1.5} mb={1}>
+            
+            <Typography variant="h2" fontWeight="900" sx={{ color: "#333", fontSize: { xs: "1.4rem", md: "2rem" } }}>
+              ชำระเงิน
+            </Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            ตรวจสอบคำสั่งซื้อ กรอกข้อมูลการจัดส่ง และยืนยันการชำระเงินอย่างปลอดภัย
+          </Typography>
+        </Container>
+      </Box>
+
+      <Container maxWidth="lg" sx={{ pt: { xs: 3, md: 5 } }}>
+        <Breadcrumbs
+          separator={<ArrowRight2 size="14" color="#999" />}
+          aria-label="breadcrumb"
+          sx={{ mb: { xs: 2, md: 4 } }}
+        >
+          <Link href="/" style={{ fontSize: "0.85rem", color: "inherit", textDecoration: "none" }}>
+            หน้าแรก
+          </Link>
+          <Typography color="text.primary" sx={{ fontSize: "0.85rem", fontWeight: 600 }}>
+            ชำระเงิน
+          </Typography>
+        </Breadcrumbs>
+
         <Box mb={4}>
           <Button
             component={Link}
@@ -203,10 +317,6 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
             กลับไปเลือกสินค้าต่อ
           </Button>
         </Box>
-
-        <Typography variant="h4" fontWeight="900" mb={4}>
-          ชำระเงิน (Checkout)
-        </Typography>
 
         <form onSubmit={handleCheckout}>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
@@ -382,17 +492,12 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
                     <Cards size="24" color="#d71414" variant="Bulk" /> 
                     วิธีการชำระเงิน
                   </Typography>
-                  <Box sx={{ border: '1px solid', borderColor: 'primary.main', borderRadius: 2, p: 2, bgcolor: 'rgb(215, 20, 20, 0.05)' }}>
-                    <Typography fontWeight="800" mb={1} color="primary.main">โอนเงินเข้าบัญชีธนาคาร</Typography>
-                    <Typography variant="body2" color="text.secondary" mb={2}>
-                      กรุณาโอนเงินมาที่บัญชีด้านล่างเพื่อชำระค่าสินค้า
-                    </Typography>
-                    <Box sx={{ bgcolor: 'white', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'grey.200' }}>
-                      <Typography variant="body2" sx={{ whiteSpace: "pre-line", lineHeight: 1.8 }}>
-                        {bankInfoText}
-                      </Typography>
-                    </Box>
-                  </Box>
+                  <BankAccountCard
+                    bankAccountInfo={bankAccountInfo}
+                    amount={totalPrice + effectiveShippingCost - discountAmount}
+                    title="โอนเงินเข้าบัญชีธนาคาร"
+                    subtitle="กรุณาโอนเงินมาที่บัญชีด้านล่างเพื่อชำระค่าสินค้า"
+                  />
                 </Paper>
               </Stack>
             </Box>
@@ -469,6 +574,42 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
                 <Divider sx={{ mb: 3 }} />
 
                 {/* Discount Code */}
+                {availableCoupons.length > 0 && (
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography variant="body2" fontWeight="900" sx={{ mb: 1 }}>
+                      คูปองที่ใช้ได้ตอนนี้
+                    </Typography>
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                      {availableCoupons.map((coupon) => (
+                        <Chip
+                          key={coupon.id}
+                          clickable
+                          disabled={isApplyingDiscount}
+                          label={`${coupon.code} · ${formatCouponBenefit(coupon)}`}
+                          onClick={() => void handleSelectCoupon(coupon.code)}
+                          color={selectedAvailableCoupon?.id === coupon.id ? "warning" : "default"}
+                          variant={selectedAvailableCoupon?.id === coupon.id ? "filled" : "outlined"}
+                          sx={{
+                            height: 34,
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            bgcolor: selectedAvailableCoupon?.id === coupon.id ? "warning.light" : "transparent",
+                            borderColor: selectedAvailableCoupon?.id === coupon.id ? "warning.main" : "grey.300",
+                            "& .MuiChip-label": {
+                              px: 1.5,
+                            },
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                    {selectedAvailableCoupon && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                        {selectedAvailableCoupon.name} • {formatCouponCondition(selectedAvailableCoupon)}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+
                 <Stack direction="row" spacing={1} mb={3}>
                   <TextField
                     size="small"
@@ -478,6 +619,8 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
                     onChange={(e) => {
                       setDiscountCode(e.target.value);
                       setDiscountApplied(false);
+                      setDiscountAmount(0);
+                      setDiscountMessage("");
                     }}
                     InputProps={{
                       startAdornment: (
@@ -491,6 +634,7 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
                   <Button
                     variant="outlined"
                     onClick={handleApplyDiscount}
+                    disabled={isApplyingDiscount}
                     sx={{
                       borderRadius: 3,
                       fontWeight: 800,
@@ -502,17 +646,12 @@ export default function CheckoutClient({ profile, bankAccountInfo }: { profile: 
                       px: 2,
                     }}
                   >
-                    ใช้งาน
+                    {isApplyingDiscount ? "กำลังตรวจสอบ..." : "ใช้งาน"}
                   </Button>
                 </Stack>
-                {discountApplied && (
-                  <Typography variant="caption" color="success.main" fontWeight="700" display="block" mb={2}>
-                    ✓ ใช้โค้ดส่วนลด &quot;{discountCode.toUpperCase()}&quot; สำเร็จ ลด ฿{discountAmount}
-                  </Typography>
-                )}
-                {!discountApplied && discountCode.trim() !== "" && (
-                  <Typography variant="caption" color="error.main" fontWeight="700" display="block" mb={2}>
-                    โค้ดส่วนลดไม่ถูกต้อง
+                {discountMessage && (
+                  <Typography variant="caption" color={discountMessageTone === "success" ? "success.main" : discountMessageTone === "info" ? "text.secondary" : "error.main"} fontWeight="700" display="block" mb={2}>
+                    {discountApplied ? `✓ ${discountMessage} ลด ฿${discountAmount.toLocaleString()}` : discountMessage}
                   </Typography>
                 )}
 

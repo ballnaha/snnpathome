@@ -8,7 +8,11 @@ declare global {
   var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
 }
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+const cachedPrisma = globalThis.prismaGlobal;
+
+const prisma = cachedPrisma && "promotion" in cachedPrisma && "coupon" in cachedPrisma
+  ? cachedPrisma
+  : prismaClientSingleton();
 
 export default prisma;
 

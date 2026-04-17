@@ -28,6 +28,8 @@ import {
 } from "@mui/material";
 import { Add, Edit2, Trash, Truck, TickCircle, CloseCircle } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
+import ConfirmActionDialog from "@/components/ConfirmActionDialog";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface ShippingMethod {
   id: string;
@@ -57,14 +59,33 @@ export default function ShippingMethodsPage() {
   const [form, setForm] = useState<Omit<ShippingMethod, "id">>(EMPTY);
   const [hasFreeThreshold, setHasFreeThreshold] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [toggleConfirm, setToggleConfirm] = useState<{ methodId: string; nextActive: boolean } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/shipping-methods");
-    const data = await res.json();
-    setMethods(data);
-    setLoading(false);
-  }, []);
+    try {
+      const res = await fetch("/api/admin/shipping-methods");
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setMethods([]);
+        showSnackbar(
+          typeof data?.error === "string" ? data.error : "ไม่สามารถโหลดรูปแบบการจัดส่งได้",
+          "error"
+        );
+        return;
+      }
+
+      setMethods(Array.isArray(data) ? data : []);
+    } catch {
+      setMethods([]);
+      showSnackbar("ไม่สามารถโหลดรูปแบบการจัดส่งได้", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [showSnackbar]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -105,20 +126,54 @@ export default function ShippingMethodsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/admin/shipping-methods/${id}`, { method: "DELETE" });
-    if (res.ok) { showSnackbar("ลบสำเร็จ", "success"); load(); }
-    else showSnackbar("เกิดข้อผิดพลาด", "error");
-    setDeleteConfirm(null);
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/shipping-methods/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        showSnackbar("ลบสำเร็จ", "success");
+        setDeleteConfirm(null);
+        load();
+      } else {
+        showSnackbar("เกิดข้อผิดพลาด", "error");
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleToggleActive = async (m: ShippingMethod) => {
-    await fetch(`/api/admin/shipping-methods/${m.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !m.isActive }),
-    });
-    load();
+    setUpdatingId(m.id);
+    try {
+      const res = await fetch(`/api/admin/shipping-methods/${m.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !m.isActive }),
+      });
+
+      if (res.ok) {
+        setToggleConfirm(null);
+        load();
+        return;
+      }
+
+      showSnackbar("เปลี่ยนสถานะรูปแบบการจัดส่งไม่สำเร็จ", "error");
+    } finally {
+      setUpdatingId(null);
+    }
   };
+
+  const requestToggleActive = (method: ShippingMethod) => {
+    if (method.isActive) {
+      setToggleConfirm({ methodId: method.id, nextActive: false });
+      return;
+    }
+
+    void handleToggleActive(method);
+  };
+
+  const confirmedMethod = toggleConfirm
+    ? methods.find((method) => method.id === toggleConfirm.methodId) ?? null
+    : null;
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 } }}>
@@ -182,7 +237,8 @@ export default function ShippingMethodsPage() {
                     <TableCell>
                       <Switch
                         checked={m.isActive}
-                        onChange={() => handleToggleActive(m)}
+                        disabled={updatingId === m.id}
+                        onChange={() => requestToggleActive(m)}
                         color="primary"
                         size="small"
                       />
@@ -278,19 +334,25 @@ export default function ShippingMethodsPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirm */}
-      <Dialog open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 900 }}>ยืนยันการลบ</DialogTitle>
-        <DialogContent>
-          <Typography>คุณต้องการลบรูปแบบการจัดส่งนี้ใช่หรือไม่?</Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5, pt: 0 }}>
-          <Button onClick={() => setDeleteConfirm(null)} sx={{ fontWeight: 700 }}>ยกเลิก</Button>
-          <Button variant="contained" color="error" onClick={() => deleteConfirm && handleDelete(deleteConfirm)} sx={{ fontWeight: 800, borderRadius: 2.5 }}>
-            ลบ
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={!!deleteConfirm}
+        message="คุณต้องการลบรูปแบบการจัดส่งนี้ใช่หรือไม่?"
+        loading={Boolean(deleteConfirm && deletingId === deleteConfirm)}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteConfirm && void handleDelete(deleteConfirm)}
+      />
+
+      <ConfirmActionDialog
+        open={!!toggleConfirm}
+        title="ยืนยันการปิดใช้งานรูปแบบการจัดส่ง"
+        message={confirmedMethod ? `คุณต้องการปิดใช้งาน ${confirmedMethod.name} ใช่หรือไม่? เมื่่อปิดแล้วลูกค้าจะไม่สามารถเลือกวิธีจัดส่งนี้ได้` : "คุณต้องการปิดใช้งานรูปแบบการจัดส่งนี้ใช่หรือไม่?"}
+        confirmText="ปิดใช้งาน"
+        confirmColor="warning"
+        loadingText="กำลังอัปเดตสถานะ..."
+        loading={Boolean(toggleConfirm && updatingId === toggleConfirm.methodId)}
+        onClose={() => setToggleConfirm(null)}
+        onConfirm={() => confirmedMethod && void handleToggleActive(confirmedMethod)}
+      />
     </Box>
   );
 }

@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as any).role !== "ADMIN") return null;
-  return session;
-}
+import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth";
 
 export async function GET() {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
   const brands = await prisma.brand.findMany({
     orderBy: [{ priority: "desc" }, { name: "asc" }],
@@ -21,15 +14,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
 
-  const { name, slug, logo, priority } = await req.json();
+  const { name, slug, logo, priority, isActive } = await req.json();
   if (!name || !slug) return NextResponse.json({ error: "ข้อมูลไม่ครบ" }, { status: 400 });
 
   try {
     const brand = await prisma.brand.create({
-      data: { name, slug, logo: logo || null, priority: Number(priority ?? 0) },
+      data: { name, slug, logo: logo || null, priority: Number(priority ?? 0), isActive: isActive ?? true },
       include: { _count: { select: { products: true } } },
     });
     return NextResponse.json(brand, { status: 201 });

@@ -40,6 +40,8 @@ export default function CartDrawer() {
       anchor="right"
       open={isDrawerOpen}
       onClose={closeDrawer}
+      ModalProps={{ keepMounted: false, disableScrollLock: true }}
+      sx={{ zIndex: 1400 }}
       PaperProps={{
         sx: {
           width: { xs: "100%", sm: 420 },

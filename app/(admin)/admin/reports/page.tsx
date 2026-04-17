@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "รายงานการขาย | SNNP Admin" };
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: "รอดำเนินการ", PAID: "ชำระแล้ว", PROCESSING: "กำลังเตรียม",
+  PENDING: "รอดำเนินการ", PAID: "ชำระแล้ว", PROCESSING: "กำลังเตรียมจัดส่ง",
   SHIPPED: "จัดส่งแล้ว", DELIVERED: "ส่งสำเร็จ", CANCELLED: "ยกเลิก",
 };
 const STATUS_COLOR: Record<string, "default" | "warning" | "info" | "success" | "error"> = {

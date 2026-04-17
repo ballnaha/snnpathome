@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { randomUUID } from "crypto";
+import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth";
 
 /** Max upload size: 10 MB */
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -13,11 +12,8 @@ const MAX_SIZE = 10 * 1024 * 1024;
 const MAX_DIM = 400;
 
 export async function POST(req: NextRequest) {
-  // Admin-only
-  const session = await getServerSession(authOptions);
-  if (!session || session.user?.role !== "ADMIN") {
-    return NextResponse.json({ error: "ไม่มีสิทธิ์" }, { status: 403 });
-  }
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse("ไม่มีสิทธิ์", 403);
 
   try {
     const contentLength = Number(req.headers.get("content-length") ?? 0);

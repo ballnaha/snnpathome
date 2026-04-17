@@ -29,7 +29,7 @@ export async function generateMetadata({
   const { brand, search } = await searchParams;
 
   if (brand) {
-    const brandData = await prisma.brand.findUnique({ where: { slug: brand } });
+    const brandData = await prisma.brand.findFirst({ where: { slug: brand, isActive: true } });
     if (brandData) {
       return {
         title: brandData.name,
@@ -70,13 +70,17 @@ export default async function AllProductsPage({
 
   // Fetch brands for the sidebar
   const brands = await prisma.brand.findMany({
+    where: { isActive: true },
     orderBy: { priority: "desc" },
   });
 
   // Build product filter
   const where: Prisma.ProductWhereInput = {
     isActive: true,
-    ...(brand ? { brand: { slug: brand } } : {}),
+    brand: {
+      isActive: true,
+      ...(brand ? { slug: brand } : {}),
+    },
     ...(search
       ? { name: { contains: search } }
       : {}),
@@ -126,23 +130,27 @@ export default async function AllProductsPage({
         sx={{ bgcolor: "#eee", py: { xs: 4, md: 6 }, textAlign: "center" }}
       >
         <Container maxWidth="md">
-          <Typography
-            variant="h2"
-            fontWeight="900"
-            sx={{ color: "#333", fontSize: { xs: "1.4rem", md: "2rem" } }}
-          >
-            {pageTitle}
-          </Typography>
-          {search && (
-            <Typography variant="body2" color="text.secondary" mt={1}>
-              ผลการค้นหา: &quot;{search}&quot; — พบ {products.length} รายการ
+          <Stack direction="row" alignItems="center" justifyContent="center" gap={1.5} mb={1}>
+            <Typography
+              variant="h2"
+              fontWeight="900"
+              sx={{ color: "#333", fontSize: { xs: "1.4rem", md: "2rem" } }}
+            >
+              {pageTitle}
             </Typography>
-          )}
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            {search
+              ? `ผลการค้นหา: "${search}" — พบ ${products.length} รายการ`
+              : activeBrand
+              ? `สินค้าแบรนด์ ${activeBrand.name} ทั้งหมด ${products.length} รายการ`
+              : `สินค้าทั้งหมด ${products.length} รายการ`}
+          </Typography>
         </Container>
       </Box>
 
       {/* Main Content */}
-      <Container maxWidth="lg" component="main" sx={{ py: { xs: 3, md: 6 } }}>
+      <Container maxWidth="lg" component="main" sx={{ pt: { xs: 3, md: 5 }, pb: { xs: 4, md: 6 } }}>
         <Breadcrumbs
           separator={<ArrowRight2 size="14" color="#999" />}
           aria-label="breadcrumb"

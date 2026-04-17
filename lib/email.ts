@@ -72,6 +72,10 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
   const bankInfoHtml = formatMultilineForHtml(
     (bankAccountInfo && bankAccountInfo.trim()) || DEFAULT_BANK_ACCOUNT_INFO
   );
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const encodedOrderNumber = encodeURIComponent(orderNumber);
+  const paymentNotificationUrl = `${baseUrl}/payment-notification?order=${encodedOrderNumber}`;
+  const trackOrderUrl = `${baseUrl}/track-order?order=${encodedOrderNumber}`;
 
   // Read logo as base64 for email embedding (works on localhost + production)
   let logoSrc = "";
@@ -125,6 +129,11 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
 
               <h2 style="margin: 0 0 6px; font-size:18px; color:#1a1a1a;">สวัสดีคุณ ${firstName} ${lastName} 🎉</h2>
               <p style="margin: 0 0 28px; color:#555; font-size:14px; line-height:1.6;">เราได้รับคำสั่งซื้อของคุณแล้ว กรุณาชำระเงินตามรายละเอียดด้านล่างเพื่อดำเนินการต่อ</p>
+
+              <div style="margin: 0 0 28px;">
+                <a href="${trackOrderUrl}" style="display:inline-block; background:#fff6de; color:#8a6a18; font-size:14px; font-weight:800; text-decoration:none; padding:12px 18px; border-radius:999px; border:1px solid #f0dda0;">ติดตามสถานะคำสั่งซื้อทันที</a>
+                <p style="margin:10px 0 0; color:#777; font-size:12px; line-height:1.6;">ลิงก์นี้จะพาคุณไปยังหน้าติดตามสถานะพร้อมกรอกหมายเลขคำสั่งซื้อให้แล้ว จากนั้นยืนยันด้วยอีเมลหรือเบอร์โทร 4 หลักท้ายเพื่อดูสถานะล่าสุด</p>
+              </div>
 
               <!-- Order Number -->
               <div style="background:#fff9f9; border:1px solid #ffd5d5; border-radius:8px; padding:14px 20px; margin-bottom:28px; display:flex; align-items:center; gap:12px;">
@@ -180,7 +189,10 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
                 ${bankInfoHtml}<br/>
                 <br/>
                 หลังโอนเงินแล้ว กรุณาแนบสลิปที่
-                <a href="${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/payment-notification?order=${orderNumber}" style="color:#d71414; font-weight:700;">แจ้งชำระเงิน</a>
+                <a href="${paymentNotificationUrl}" style="color:#d71414; font-weight:700;">แจ้งชำระเงิน</a>
+                <br/>
+                หรือตรวจสอบสถานะล่าสุดที่
+                <a href="${trackOrderUrl}" style="color:#8a6a18; font-weight:700;">ติดตามสถานะคำสั่งซื้อ</a>
               </div>
 
               <p style="font-size:13px; color:#999; margin:0;">หากมีคำถามหรือต้องการความช่วยเหลือ กรุณาติดต่อฝ่ายบริการลูกค้าของเรา</p>

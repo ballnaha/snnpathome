@@ -156,6 +156,42 @@ const products = [
   },
 ];
 
+const promotions = [
+  {
+    title: "ดีลพิเศษส่งตรงถึงบ้าน",
+    description: "ช้อปสินค้าขายดีจากเครือ SNNP ในราคาพิเศษ พร้อมโปรโมชันประจำเดือนที่คัดมาเพื่อสายตุนและสายกินเล่นโดยเฉพาะ",
+    imageUrl: "/images/logo.png",
+    sortOrder: 1,
+  },
+  {
+    title: "แพ็กคุ้ม ซื้อเยอะยิ่งคุ้ม",
+    description: "รวมสินค้ารูปแบบแพ็กและลังในราคาสุดคุ้ม เหมาะสำหรับซื้อเข้าบ้าน ซื้อฝาก หรือสต็อกไว้ได้ยาวๆ แบบไม่ต้องกังวล",
+    imageUrl: "/images/logo.png",
+    sortOrder: 2,
+  },
+  {
+    title: "โปรโมชันอัปเดตตลอด",
+    description: "ติดตามโปรโมชันใหม่ได้ที่หน้านี้ ทั้งสินค้าราคาพิเศษ โปรฯ ตามฤดูกาล และข้อเสนอสำหรับสมาชิก SNNP AT HOME",
+    imageUrl: "/images/logo.png",
+    sortOrder: 3,
+  },
+];
+
+const coupons = [
+  {
+    code: "SNNP10",
+    name: "โค้ดต้อนรับ SNNP",
+    description: "ส่วนลดเริ่มต้นสำหรับลูกค้าที่สั่งซื้อผ่าน SNNP AT HOME",
+    type: "FIXED",
+    value: 10,
+    minSubtotal: 100,
+    maxDiscount: null,
+    isActive: true,
+    startsAt: null,
+    endsAt: null,
+  },
+];
+
 async function main() {
   console.log("🌱 Seeding brands...");
 
@@ -183,6 +219,28 @@ async function main() {
   }
 
   console.log(`✅ ${products.length} products seeded`);
+  console.log("🌱 Seeding promotions...");
+
+  for (const promotion of promotions) {
+    await prisma.promotion.upsert({
+      where: { title: promotion.title },
+      update: promotion,
+      create: promotion,
+    });
+  }
+
+  console.log(`✅ ${promotions.length} promotions seeded`);
+  console.log("🌱 Seeding coupons...");
+
+  for (const coupon of coupons) {
+    await prisma.coupon.upsert({
+      where: { code: coupon.code },
+      update: coupon,
+      create: coupon,
+    });
+  }
+
+  console.log(`✅ ${coupons.length} coupons seeded`);
 }
 
 main()

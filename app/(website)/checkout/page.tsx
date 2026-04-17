@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getPublicActiveCoupons } from "@/lib/public-coupons";
 import CheckoutClient from "./CheckoutClient";
 
 export const metadata: Metadata = {
@@ -11,9 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutPage() {
-  const [session, siteSettings] = await Promise.all([
+  const [session, siteSettings, availableCoupons] = await Promise.all([
     getServerSession(authOptions),
     prisma.siteSetting.findUnique({ where: { id: "default" }, select: { bankAccountInfo: true } }),
+    getPublicActiveCoupons(),
   ]);
 
   let profile = {
@@ -60,5 +62,11 @@ export default async function CheckoutPage() {
     }
   }
 
-  return <CheckoutClient profile={profile} bankAccountInfo={siteSettings?.bankAccountInfo ?? null} />;
+  return (
+    <CheckoutClient
+      profile={profile}
+      bankAccountInfo={siteSettings?.bankAccountInfo ?? null}
+      availableCoupons={availableCoupons}
+    />
+  );
 }

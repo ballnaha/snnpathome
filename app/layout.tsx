@@ -34,8 +34,8 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="th" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
+    <html lang="th" className="antialiased">
+      <body className="flex flex-col min-h-[100dvh]">
         <Providers session={session}>{children}</Providers>
       </body>
     </html>

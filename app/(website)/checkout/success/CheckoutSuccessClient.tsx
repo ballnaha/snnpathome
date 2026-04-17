@@ -22,6 +22,7 @@ import {
 } from "iconsax-react";
 import Link from "next/link";
 import { useSnackbar } from "@/components/SnackbarProvider";
+import BankAccountCard from "@/components/BankAccountCard";
 
 interface OrderItem {
   id: string;
@@ -33,6 +34,7 @@ interface OrderItem {
 
 interface OrderSnapshot {
   orderNumber: string;
+  accessToken?: string;
   items: OrderItem[];
   subtotal: number;
   discount: number;
@@ -41,7 +43,7 @@ interface OrderSnapshot {
   createdAt: string;
 }
 
-export default function CheckoutSuccessClient() {
+export default function CheckoutSuccessClient({ bankAccountInfo }: { bankAccountInfo?: string | null }) {
   const { showSnackbar } = useSnackbar();
   const [order, setOrder] = useState<OrderSnapshot | null>(null);
   const [slipImage, setSlipImage] = useState<string | null>(null);
@@ -89,16 +91,24 @@ export default function CheckoutSuccessClient() {
       showSnackbar("ไม่พบหมายเลขคำสั่งซื้อ", "error");
       return;
     }
+    if (!order.accessToken) {
+      showSnackbar("กรุณายืนยันคำสั่งซื้ออีกครั้งในหน้าแจ้งชำระเงิน", "error");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/orders/${order.orderNumber}/slip`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slipUrl: slipImage }),
+        body: JSON.stringify({ slipUrl: slipImage, accessToken: order.accessToken }),
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          showSnackbar("สิทธิ์สำหรับแนบสลิปหมดอายุ กรุณาไปที่หน้าแจ้งชำระเงินเพื่อยืนยันอีกครั้ง", "error");
+          return;
+        }
         showSnackbar(data.error || "เกิดข้อผิดพลาด กรุณาลองใหม่", "error");
         return;
       }
@@ -254,26 +264,8 @@ export default function CheckoutSuccessClient() {
               </Stack>
 
               {/* Bank Info */}
-              <Box sx={{ bgcolor: "grey.50", borderRadius: 3, p: 3, mt: 3, border: "1px solid", borderColor: "grey.200" }}>
-                <Typography variant="body2" fontWeight="800" mb={1.5}>📌 โอนเงินมาที่</Typography>
-                <Stack spacing={0.8}>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">ธนาคาร</Typography>
-                    <Typography variant="body2" fontWeight="700">กสิกรไทย (KBank)</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">ชื่อบัญชี</Typography>
-                    <Typography variant="body2" fontWeight="700">บมจ. ศรีนานาพร มาร์เก็ตติ้ง</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">เลขที่บัญชี</Typography>
-                    <Typography variant="body2" fontWeight="900" color="primary.main">123-4-56789-0</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">จำนวนเงิน</Typography>
-                    <Typography variant="body2" fontWeight="900" color="primary.main">฿{order.total.toLocaleString()}</Typography>
-                  </Stack>
-                </Stack>
+              <Box sx={{ mt: 3 }}>
+                <BankAccountCard bankAccountInfo={bankAccountInfo} amount={order.total} />
               </Box>
             </Paper>
           )}
@@ -307,6 +299,11 @@ export default function CheckoutSuccessClient() {
                 <Typography variant="body2" color="text.secondary" mb={3}>
                   กรุณาอัปโหลดหลักฐานการโอนเงิน เพื่อให้เราดำเนินการจัดส่งสินค้าได้รวดเร็วยิ่งขึ้น
                 </Typography>
+                {!order?.accessToken && (
+                  <Typography variant="body2" color="warning.main" mb={2}>
+                    เซสชันยืนยันคำสั่งซื้อหมดอายุแล้ว กรุณาไปที่หน้าแจ้งชำระเงินเพื่อยืนยันด้วยอีเมลหรือเบอร์โทรอีกครั้ง
+                  </Typography>
+                )}
 
                 {/* Drop zone */}
                 <Box
@@ -374,7 +371,7 @@ export default function CheckoutSuccessClient() {
                   fullWidth
                   size="large"
                   onClick={handleSubmitSlip}
-                  disabled={!slipFile || isSubmitting}
+                  disabled={!slipFile || isSubmitting || !order?.accessToken}
                   startIcon={<DocumentUpload variant="Bold" color="#FFF" />}
                   sx={{
                     mt: 3,
