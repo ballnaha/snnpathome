@@ -16,6 +16,10 @@ function normalizeText(value: unknown) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeBoolean(value: unknown) {
+  return value === true;
+}
+
 export async function GET() {
   const session = await requireAdminSession();
   if (!session) return adminUnauthorizedResponse();
@@ -24,6 +28,11 @@ export async function GET() {
     where: { id: DEFAULT_ID },
     update: {},
     create: { id: DEFAULT_ID },
+    include: {
+      announcementItems: {
+        orderBy: { sortOrder: "asc" },
+      },
+    },
   });
 
   return NextResponse.json(settings);
@@ -47,6 +56,16 @@ export async function PATCH(req: NextRequest) {
       serviceHours: normalizeText(body.serviceHours),
       bankAccountInfo: normalizeText(body.bankAccountInfo),
       companyAddress: normalizeText(body.companyAddress),
+      announcementActive: normalizeBoolean(body.announcementActive),
+      // Update announcement items
+      announcementItems: {
+        deleteMany: {},
+        create: (body.announcementItems || []).map((item: any, index: number) => ({
+          imageUrl: item.imageUrl,
+          link: normalizeUrl(item.link),
+          sortOrder: index,
+        })),
+      },
     },
     create: {
       id: DEFAULT_ID,
@@ -60,6 +79,19 @@ export async function PATCH(req: NextRequest) {
       serviceHours: normalizeText(body.serviceHours),
       bankAccountInfo: normalizeText(body.bankAccountInfo),
       companyAddress: normalizeText(body.companyAddress),
+      announcementActive: normalizeBoolean(body.announcementActive),
+      announcementItems: {
+        create: (body.announcementItems || []).map((item: any, index: number) => ({
+          imageUrl: item.imageUrl,
+          link: normalizeUrl(item.link),
+          sortOrder: index,
+        })),
+      },
+    },
+    include: {
+      announcementItems: {
+        orderBy: { sortOrder: "asc" },
+      },
     },
   });
 

@@ -37,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const data: Record<string, unknown> = {};
+  if (body.sku !== undefined) data.sku = body.sku || null;
   if (body.name !== undefined) data.name = body.name;
   if (body.slug !== undefined) data.slug = body.slug;
   if (body.description !== undefined) data.description = body.description || null;

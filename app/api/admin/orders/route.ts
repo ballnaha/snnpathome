@@ -16,6 +16,7 @@ export async function GET() {
           id: true,
           productName: true,
           productImage: true,
+          productSku: true,
           price: true,
           quantity: true,
         },

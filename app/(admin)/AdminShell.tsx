@@ -29,10 +29,9 @@ import {
   Category,
   Chart,
   HambergerMenu,
+  Home2,
   LogoutCurve,
-  Notification,
   Receipt1,
-  SearchNormal1,
   Setting2,
   Shop,
   Tag,
@@ -195,20 +194,15 @@ export default function AdminShell({
         }}
       >
         <Toolbar sx={{ justifyContent: "space-between", px: { xs: 2, lg: 4 } }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { lg: "none" } }}>
-              <HambergerMenu size="24" color="currentColor" />
-            </IconButton>
-            <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", bgcolor: "grey.50", px: 2, py: 0.8, borderRadius: 2, gap: 1 }}>
-              <SearchNormal1 size="18" color="#999" />
-              <Typography variant="body2" color="grey.400" sx={{ minWidth: 150 }}>
-                ค้นหาข้อมูล...
-              </Typography>
-            </Box>
-          </Stack>
+          <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { lg: "none" } }}>
+            <HambergerMenu size="24" color="currentColor" />
+          </IconButton>
+          <Box sx={{ flexGrow: 1 }} />
 
           <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
-            <IconButton sx={{ bgcolor: "grey.50" }}><Notification size="22" color="#666" /></IconButton>
+            <IconButton component={Link} href="/" sx={{ bgcolor: "grey.50" }} title="กลับสู่หน้าเว็บไซต์">
+              <Home2 size="22" color="#666" />
+            </IconButton>
             <Divider orientation="vertical" flexItem sx={{ height: 24, alignSelf: "center" }} />
 
             <Box onClick={handleUserMenuOpen} sx={{ display: "flex", alignItems: "center", gap: 1.5, cursor: "pointer", p: 0.5, pr: 1.5, borderRadius: 10, transition: "all 0.2s", "&:hover": { bgcolor: "grey.50" } }}>

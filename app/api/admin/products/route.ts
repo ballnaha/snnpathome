@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const session = await requireAdminSession();
   if (!session) return adminUnauthorizedResponse();
 
-  const { name, slug, description, price, discount, image, images, stock, isActive, brandId, unitsPerCase, unitLabel, caseLabel, isBestSeller, sellMode, unitPrice } = await req.json();
+  const { sku, name, slug, description, price, discount, image, images, stock, isActive, brandId, unitsPerCase, unitLabel, caseLabel, isBestSeller, sellMode, unitPrice } = await req.json();
   if (!name || !slug || !brandId) return NextResponse.json({ error: "ข้อมูลไม่ครบ" }, { status: 400 });
 
   const imageUrls = Array.isArray(images)
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
 
   const product = await prisma.product.create({
     data: {
+      sku: sku || null,
       name,
       slug,
       description: description || null,

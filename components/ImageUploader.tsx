@@ -74,13 +74,31 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(function 
     setPendingFile(file);
   };
 
-  const handleClear = (e: React.MouseEvent) => {
+  const handleClear = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // If it's an existing server image, delete it from the folder
+    const urlToDelete = pendingFile ? null : value;
+    
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPendingFile(null);
     setPreviewUrl("");
     onChange?.("");
     setError(null);
+
+    // If there was a value on the server, call the DELETE API
+    if (urlToDelete && urlToDelete.startsWith("/uploads/")) {
+      try {
+        await fetch(endpoint, {
+          method: "DELETE",
+          body: JSON.stringify({ url: urlToDelete }),
+        });
+      } catch (err) {
+        console.error("Failed to delete file from folder", err);
+        // We don't necessarily want to block the UI if delete fails, 
+        // as the user already "cleared" it in their mind.
+      }
+    }
   };
 
   return (

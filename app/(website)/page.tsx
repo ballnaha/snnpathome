@@ -4,6 +4,7 @@ import { Box, Container, Typography } from "@mui/material";
 import Hero from "@/components/Hero";
 import ProductSection from "@/components/ProductSection";
 import BrandCard from "@/components/BrandCard";
+import AnnouncementModal from "@/components/AnnouncementModal";
 import prisma from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -35,26 +36,40 @@ function mapProduct(p: { id: string; name: string; slug: string; price: { toNumb
 }
 
 export default async function Home() {
-  const brands = await prisma.brand.findMany({
-    where: { isActive: true },
-    orderBy: { priority: "asc" },
-    include: {
-      products: {
-        where: { isActive: true },
-        orderBy: { createdAt: "asc" },
-        take: 4,
+  const [brands, allProducts, siteSettings] = await Promise.all([
+    prisma.brand.findMany({
+      where: { isActive: true },
+      orderBy: { priority: "asc" },
+      include: {
+        products: {
+          where: { isActive: true },
+          orderBy: { createdAt: "asc" },
+          take: 4,
+        },
       },
-    },
-  });
-
-  const allProducts = await prisma.product.findMany({
-    where: { isActive: true, brand: { isActive: true } },
-    orderBy: { createdAt: "desc" },
-    take: 8,
-  });
+    }),
+    prisma.product.findMany({
+      where: { isActive: true, brand: { isActive: true } },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    }),
+    prisma.siteSetting.findUnique({
+      where: { id: "default" },
+      include: {
+        announcementItems: { orderBy: { sortOrder: "asc" } }
+      }
+    }),
+  ]);
 
   return (
     <Box sx={{ pb: { xs: 8, md: 0 } }}>
+      <AnnouncementModal
+        active={siteSettings?.announcementActive ?? false}
+        items={(siteSettings?.announcementItems || []).map(item => ({
+          imageUrl: item.imageUrl,
+          link: item.link
+        }))}
+      />
       <Typography variant="h1" sx={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", border: 0 }}>
         SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP เบนโตะ เจเล่ โลตัส
       </Typography>

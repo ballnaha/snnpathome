@@ -136,7 +136,7 @@ export default function Header() {
     >
       {/* Top Red Bar */}
       <Box sx={{ bgcolor: "primary.main", color: "white", py: 1 }}>
-        <Container maxWidth="lg">
+        <Container maxWidth={false} sx={{ px: { xs: 2, md: 4 } }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             {/* Left: Tracking — hidden on mobile */}
             <Stack direction="row" spacing={3} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
@@ -169,7 +169,7 @@ export default function Header() {
             </Link>
 
             {/* Right: User & Cart */}
-            <Stack direction="row" spacing={2} alignItems="center">
+            <Stack direction="row" spacing={1.5} alignItems="center">
               <Box sx={{ minHeight: 32, display: { xs: 'none', md: 'flex' }, alignItems: 'center', position: 'relative' }}>
                 {session ? (
                   <>
@@ -179,34 +179,43 @@ export default function Header() {
                       sx={{ 
                         display: 'flex', 
                         alignItems: 'center', 
-                        gap: 1, 
+                        gap: 1.2, 
                         cursor: 'pointer', 
-                        bgcolor: 'rgba(255,255,255,0.15)',
-                        pl: 1,
-                        pr: 1.5,
-                        py: 0.5,
-                        borderRadius: 10,
-                        transition: '0.2s',
-                        "&:hover": { bgcolor: 'rgba(255,255,255,0.25)' },
+                        bgcolor: 'rgba(255,255,255,0.22)',
+                        backdropFilter: 'blur(8px)',
+                        pl: 0.8,
+                        pr: 1.8,
+                        py: 0.6,
+                        borderRadius: 12,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                        "&:hover": { 
+                          bgcolor: 'rgba(255,255,255,0.35)',
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                        },
+                        "&:active": { transform: 'scale(0.96)' },
                         userSelect: 'none',
                       }}
                     >
                       <Avatar 
                         sx={{ 
-                          width: 24, 
-                          height: 24, 
-                          fontSize: '0.7rem', 
+                          width: 26, 
+                          height: 26, 
+                          fontSize: '0.75rem', 
                           fontWeight: 900, 
                           bgcolor: 'white', 
-                          color: 'primary.main' 
+                          color: 'primary.main',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                         }}
                       >
                         {session.user?.name?.charAt(0) || "U"}
                       </Avatar>
-                      <Typography variant="caption" fontWeight="700" sx={{ fontSize: "0.75rem", color: 'white' }}>
-                        สวัสดี, {session.user?.name?.split(' ')[0] || "คุณลูกค้า"}
+                      <Typography variant="caption" fontWeight="800" sx={{ fontSize: "0.78rem", color: 'white', letterSpacing: 0.2 }}>
+                        {session.user?.name?.split(' ')[0] || "คุณลูกค้า"}
                       </Typography>
-                      <ArrowDown2 size="12" color="#FFF" variant="Bold" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />
+                      <ArrowDown2 size="14" color="#FFF" variant="Bold" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none', transition: '0.4s' }} />
                     </Box>
                     <Popper
                       open={menuOpen}
@@ -221,13 +230,13 @@ export default function Header() {
                           <Paper
                             elevation={0}
                             sx={{
-                              mt: 1.5,
-                              minWidth: 200,
-                              borderRadius: 3,
-                              boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                              mt: 2,
+                              minWidth: 210,
+                              borderRadius: 3.5,
+                              boxShadow: '0 15px 45px rgba(0,0,0,0.18)',
                               border: '1px solid',
                               borderColor: 'grey.100',
-                              p: 1,
+                              p: 1.2,
                               overflow: 'visible',
                             }}
                           >
@@ -238,9 +247,9 @@ export default function Header() {
                                   component={Link}
                                   href="/profile"
                                   selected={isRouteActive("/profile")}
-                                  sx={{ borderRadius: 2, gap: 1.5, py: 1, "&.Mui-selected": { bgcolor: 'rgba(215,20,20,0.08)' } }}
+                                  sx={{ borderRadius: 2.5, gap: 1.5, py: 1.2, "&.Mui-selected": { bgcolor: 'rgba(215,20,20,0.08)' } }}
                                 >
-                                   <UserEdit size="18" color="#d71414" variant="Bulk" />
+                                   <UserEdit size="20" color="#d71414" variant="Bulk" />
                                    <Typography variant="body2" fontWeight="700">โปรไฟล์ของฉัน</Typography>
                                 </MenuItem>
                                 <MenuItem
@@ -248,20 +257,20 @@ export default function Header() {
                                   component={Link}
                                   href="/orders"
                                   selected={isRouteActive("/orders")}
-                                  sx={{ borderRadius: 2, gap: 1.5, py: 1, "&.Mui-selected": { bgcolor: 'rgba(215,20,20,0.08)' } }}
+                                  sx={{ borderRadius: 2.5, gap: 1.5, py: 1.2, "&.Mui-selected": { bgcolor: 'rgba(215,20,20,0.08)' } }}
                                 >
-                                   <ClipboardText size="18" color="#d71414" variant="Bulk" />
+                                   <ClipboardText size="20" color="#d71414" variant="Bulk" />
                                    <Typography variant="body2" fontWeight="700">ประวัติการสั่งซื้อ</Typography>
                                 </MenuItem>
                                 {(session.user as { role?: string } | undefined)?.role === 'ADMIN' && (
-                                  <MenuItem onClick={handleCloseMenu} component={Link} href="/admin/users" sx={{ borderRadius: 2, gap: 1.5, py: 1, bgcolor: 'grey.50' }}>
-                                    <Setting2 size="18" color="#666" variant="Bulk" />
+                                  <MenuItem onClick={handleCloseMenu} component={Link} href="/admin/users" sx={{ borderRadius: 2.5, gap: 1.5, py: 1.2, bgcolor: 'grey.50', mt: 0.5 }}>
+                                    <Setting2 size="20" color="#666" variant="Bulk" />
                                     <Typography variant="body2" fontWeight="800">แผงควบคุมแอดมิน</Typography>
                                   </MenuItem>
                                 )}
-                                <Divider sx={{ my: 1, borderColor: 'grey.50' }} />
-                                <MenuItem onClick={() => { handleCloseMenu(); handleSignOut(); }} sx={{ borderRadius: 2, gap: 1.5, py: 1, color: 'error.main' }}>
-                                    <Logout size="18" variant="Bulk" color="currentColor" />
+                                <Divider sx={{ my: 1.2, borderColor: 'grey.50' }} />
+                                <MenuItem onClick={() => { handleCloseMenu(); handleSignOut(); }} sx={{ borderRadius: 2.5, gap: 1.5, py: 1.2, color: 'error.main' }}>
+                                    <Logout size="20" variant="Bulk" color="currentColor" />
                                     <Typography variant="body2" fontWeight="700">ออกจากระบบ</Typography>
                                 </MenuItem>
                               </Box>
@@ -277,18 +286,25 @@ export default function Header() {
                       sx={{ 
                         display: 'flex', 
                         alignItems: 'center', 
-                        gap: 1, 
+                        gap: 1.2, 
                         cursor: 'pointer', 
-                        bgcolor: 'rgba(255,255,255,0.15)',
-                        px: 2,
-                        py: 0.6,
-                        borderRadius: 10,
-                        transition: '0.2s',
-                        "&:hover": { bgcolor: 'rgba(255,255,255,0.25)' }
+                        bgcolor: 'rgba(255,255,255,0.22)',
+                        backdropFilter: 'blur(8px)',
+                        px: 2.5,
+                        py: 0.8,
+                        borderRadius: 12,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                        "&:hover": { 
+                          bgcolor: 'rgba(255,255,255,0.35)',
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                        }
                       }}
                     >
-                      <Profile size="16" variant="Bulk" color="#FFF" />
-                      <Typography variant="caption" fontWeight="700" sx={{ fontSize: "0.75rem", color: 'white' }}>
+                      <Profile size="18" variant="Bulk" color="#FFF" />
+                      <Typography variant="caption" fontWeight="800" sx={{ fontSize: "0.78rem", color: 'white', letterSpacing: 0.3 }}>
                         เข้าสู่ระบบ / สมัครสมาชิก
                       </Typography>
                     </Box>
@@ -300,8 +316,13 @@ export default function Header() {
                 onClick={openDrawer}
                 sx={{ 
                   color: 'white', 
-                  p: 0.5,
-                  transition: 'transform 0.2s',
+                  p: 0.8,
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  "&:hover": { 
+                    bgcolor: 'rgba(255,255,255,0.25)',
+                    transform: 'scale(1.1) rotate(-5deg)',
+                  },
                   "&:active": { transform: 'scale(0.9)' }
                 }}
               >
@@ -313,14 +334,15 @@ export default function Header() {
                       bgcolor: "#FFF",
                       color: "primary.main",
                       fontWeight: "900",
-                      fontSize: '10px',
-                      height: 18,
-                      minWidth: 18,
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                      fontSize: '11px',
+                      height: 19,
+                      minWidth: 19,
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.2)',
+                      border: '1.5px solid #d71414'
                     }
                   }}
                 >
-                  <ShoppingCart size="22" variant="Bulk" color="#FFF" />
+                  <ShoppingCart size="24" variant="Bulk" color="#FFF" />
                 </Badge>
               </IconButton>
             </Stack>
@@ -330,7 +352,7 @@ export default function Header() {
 
       {/* Main Navigation Bar — desktop only */}
       <Box sx={{ bgcolor: "white", borderBottom: 1, borderColor: "grey.200", py: 1.5, display: { xs: 'none', md: 'block' } }}>
-        <Container maxWidth="lg">
+        <Container maxWidth={false} sx={{ px: { xs: 2, md: 4 } }}>
           <Stack direction="row" justifyContent="center" alignItems="center" spacing={5}>
             <NavLink href="/" active={isRouteActive("/")}>หน้าแรก</NavLink>
             <NavLink href="/all-products" active={isRouteActive("/all-products")}>สินค้าทั้งหมด</NavLink>

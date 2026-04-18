@@ -37,6 +37,7 @@ export async function PATCH(
           id: true,
           productName: true,
           productImage: true,
+          productSku: true,
           price: true,
           quantity: true,
         },
@@ -55,4 +56,29 @@ export async function PATCH(
       price: Number(item.price),
     })),
   });
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse();
+
+  const { id } = await params;
+
+  const existingOrder = await prisma.order.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!existingOrder) {
+    return NextResponse.json({ error: "ไม่พบคำสั่งซื้อ" }, { status: 404 });
+  }
+
+  await prisma.order.delete({
+    where: { id },
+  });
+
+  return NextResponse.json({ success: true });
 }

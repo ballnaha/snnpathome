@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Box, Typography, Button, Container, Stack } from "@mui/material";
+import { ArrowRight } from "iconsax-react";
 import ProductCard from "./ProductCard";
 import Link from "next/link";
 
@@ -31,15 +32,15 @@ export default function ProductSection({ title, subtitle, products, viewAllHref 
     <Box component="section" sx={{ py: 8 }}>
       <Container maxWidth="lg">
         <Box textAlign="center" mb={6}>
-          <Typography 
-            variant="h4" 
-            fontWeight="900" 
-            gutterBottom 
+          <Typography
+            variant="h4"
+            fontWeight="900"
+            gutterBottom
             sx={{ letterSpacing: 2, textTransform: "uppercase", color: "primary.main" }}
           >
             {title}
           </Typography>
-          
+
           <Stack direction="row" alignItems="center" justifyContent="center" spacing={2} mb={4}>
             <Box sx={{ height: 2, width: 40, bgcolor: "primary.main" }} />
             <Typography variant="subtitle2" fontWeight="700" sx={{ letterSpacing: 3, opacity: 0.8 }}>
@@ -49,13 +50,13 @@ export default function ProductSection({ title, subtitle, products, viewAllHref 
           </Stack>
         </Box>
 
-        <Box 
-          display="grid" 
-          gap={3} 
-          gridTemplateColumns={{ 
-            xs: "repeat(2, 1fr)", 
-            sm: "repeat(3, 1fr)", 
-            md: "repeat(4, 1fr)" 
+        <Box
+          display="grid"
+          gap={3}
+          gridTemplateColumns={{
+            xs: "repeat(2, 1fr)",
+            sm: "repeat(3, 1fr)",
+            md: "repeat(4, 1fr)"
           }}
         >
           {products.map((product) => (
@@ -63,20 +64,25 @@ export default function ProductSection({ title, subtitle, products, viewAllHref 
           ))}
         </Box>
 
-        <Box textAlign="center" mt={6}>
+        <Box textAlign="center" mt={5}>
           <Button
             component={viewAllHref ? Link : "button"}
             href={viewAllHref ?? undefined}
-            variant="contained"
+            variant="outlined"
             color="primary"
+            endIcon={<ArrowRight size="18" color="currentColor" />}
             sx={{
-              px: 6,
-              py: 1.5,
-              borderRadius: "50px",
-              fontWeight: 700,
-              fontSize: '1rem',
-              boxShadow: "0 8px 16px rgba(215, 20, 20, 0.2)",
-              "&:hover": { boxShadow: "0 12px 24px rgba(215, 20, 20, 0.3)" }
+              px: { xs: 4, md: 5 },
+              py: { xs: 1, md: 1.2 },
+              borderRadius: "12px",
+              fontWeight: 800,
+              fontSize: { xs: '0.875rem', md: '0.9rem' },
+              borderWidth: "2px",
+              "&:hover": {
+                borderWidth: "2px",
+                bgcolor: "primary.main",
+                color: "white"
+              }
             }}
           >
             ดูเพิ่มเติม

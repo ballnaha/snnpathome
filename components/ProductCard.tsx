@@ -52,14 +52,19 @@ export default function ProductCard({ id, name, price, originalPrice, image, slu
       >
         {/* Badges top-left */}
         {(isBestSeller || isNew) && (
-          <Stack direction="column" gap={0.5} sx={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+          <Stack 
+            direction="column" 
+            gap={0.5} 
+            alignItems="flex-start" 
+            sx={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}
+          >
             {isBestSeller && (
-              <Box sx={{ bgcolor: '#f59e0b', color: 'white', px: 1.5, py: 0.5, borderRadius: 2, fontSize: '10px', fontWeight: 700, lineHeight: 1.4 }}>
+              <Box sx={{ bgcolor: '#f59e0b', color: 'white', px: 1.2, py: 0.4, borderRadius: 1.5, fontSize: '10px', fontWeight: 800, lineHeight: 1.2 }}>
                 BEST SELLER
               </Box>
             )}
             {isNew && (
-              <Box sx={{ bgcolor: '#22c55e', color: 'white', px: 1.5, py: 0.5, borderRadius: 2, fontSize: '10px', fontWeight: 700, lineHeight: 1.4 }}>
+              <Box sx={{ bgcolor: '#22c55e', color: 'white', px: 1.2, py: 0.4, borderRadius: 1.5, fontSize: '10px', fontWeight: 800, lineHeight: 1.2 }}>
                 NEW
               </Box>
             )}

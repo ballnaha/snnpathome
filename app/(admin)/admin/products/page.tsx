@@ -9,7 +9,7 @@ import {
   ToggleButton, ToggleButtonGroup,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
 } from "@mui/material";
-import { Add, Edit2, Trash, SearchNormal1, Shop, TickCircle, CloseCircle, Gallery } from "iconsax-react";
+import { Add, Edit2, Trash, SearchNormal1, Shop, TickCircle, CloseCircle, Gallery, Flash } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
 import MultiImageUploader, { MultiImageUploaderRef } from "@/components/MultiImageUploader";
 import ConfirmActionDialog from "@/components/ConfirmActionDialog";
@@ -17,7 +17,7 @@ import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 interface Brand { id: string; name: string; }
 interface Product {
-  id: string; name: string; slug: string; description?: string | null; price: number; discount: number | null;
+  id: string; sku: string | null; name: string; slug: string; description?: string | null; price: number; discount: number | null;
   image: string | null; stock: number; isActive: boolean; isBestSeller: boolean; brandId: string;
   brand: { name: string };
   unitsPerCase: number | null; unitLabel: string | null; caseLabel: string | null;
@@ -25,10 +25,22 @@ interface Product {
   images?: { id: string; url: string; sortOrder: number }[];
 }
 
-const EMPTY_FORM = { name: "", slug: "", description: "", price: 0, discount: "", image: "", images: [] as string[], stock: 999, isActive: true, isBestSeller: false, brandId: "", unitsPerCase: "", unitLabel: "", caseLabel: "", sellMode: "CASE_ONLY", unitPrice: "" };
+const EMPTY_FORM = { sku: "", name: "", slug: "", description: "", price: 0, discount: "", image: "", images: [] as string[], stock: 999, isActive: true, isBestSeller: false, brandId: "", unitsPerCase: "", unitLabel: "", caseLabel: "", sellMode: "CASE_ONLY", unitPrice: "" };
 
 function slugify(s: string) {
-  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\u0E00-\u0E7F-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function generateSKU(brandName: string, productName: string) {
+  const brandPart = (brandName || "PROD").substring(0, 3).toUpperCase();
+  const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${brandPart}-${randomPart}`;
 }
 
 export default function AdminProductsPage() {
@@ -52,8 +64,14 @@ export default function AdminProductsPage() {
 
   // Build upload endpoint based on current form brand only (not slug — avoids broken paths on rename)
   const uploadEndpoint = React.useMemo(() => {
-    const brandSlug = brands.find((b) => b.id === form.brandId)?.name
-      .toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") ?? "unknown";
+    const brandName = brands.find((b) => b.id === form.brandId)?.name ?? "unknown";
+    const brandSlug = brandName
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\u0E00-\u0E7F-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
     return `/api/admin/upload?folder=products/${brandSlug}`;
   }, [form.brandId, brands]);
 
@@ -88,7 +106,7 @@ export default function AdminProductsPage() {
       : p.image
         ? [p.image]
         : [];
-    setForm({ name: p.name, slug: p.slug, description: p.description ?? "", price: p.price, discount: p.discount !== null ? String(p.discount) : "", image: p.image ?? "", images: galleryImages, stock: p.stock, isActive: p.isActive, isBestSeller: p.isBestSeller, brandId: p.brandId, unitsPerCase: p.unitsPerCase !== null ? String(p.unitsPerCase) : "", unitLabel: p.unitLabel ?? "", caseLabel: p.caseLabel ?? "", sellMode: p.sellMode, unitPrice: p.unitPrice !== null ? String(p.unitPrice) : "" });
+    setForm({ sku: p.sku ?? "", name: p.name, slug: p.slug, description: p.description ?? "", price: p.price, discount: p.discount !== null ? String(p.discount) : "", image: p.image ?? "", images: galleryImages, stock: p.stock, isActive: p.isActive, isBestSeller: p.isBestSeller, brandId: p.brandId, unitsPerCase: p.unitsPerCase !== null ? String(p.unitsPerCase) : "", unitLabel: p.unitLabel ?? "", caseLabel: p.caseLabel ?? "", sellMode: p.sellMode, unitPrice: p.unitPrice !== null ? String(p.unitPrice) : "" });
     setDialogOpen(true);
   };
 
@@ -225,7 +243,8 @@ export default function AdminProductsPage() {
                         </Avatar>
                         <Box>
                           <Typography fontWeight={700} fontSize="0.9rem">{p.name}</Typography>
-                          <Stack direction="row" gap={0.5} mt={0.3}>
+                          <Stack direction="row" gap={1} mt={0.3} alignItems="center">
+                            {p.sku && <Typography variant="caption" sx={{ color: "primary.main", fontWeight: 800, bgcolor: "rgba(215,20,20,0.05)", px: 0.8, py: 0.1, borderRadius: 1 }}>{p.sku}</Typography>}
                             {p.isBestSeller && <Chip label="ขายดี" size="small" color="warning" sx={{ height: 16, fontSize: "0.6rem", fontWeight: 800 }} />}
                           </Stack>
                         </Box>
@@ -309,9 +328,43 @@ export default function AdminProductsPage() {
                   value={form.slug}
                   onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
                 />
+                <TextField
+                  label="SKU (รหัสสินค้า)" fullWidth size="small"
+                  value={form.sku}
+                  onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value.toUpperCase() }))}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title="สร้างรหัสอัตโนมัติ">
+                          <IconButton 
+                            size="small" 
+                            onClick={() => {
+                              const brand = brands.find(b => b.id === form.brandId);
+                              setForm(p => ({ ...p, sku: generateSKU(brand?.name || "", p.name) }));
+                            }}
+                          >
+                            <Flash variant="Bold" size={16} color="#d71414" />
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    )
+                  }}
+                />
                 <FormControl fullWidth size="small">
                   <InputLabel>แบรนด์</InputLabel>
-                  <Select value={form.brandId} label="แบรนด์" onChange={(e) => setForm((p) => ({ ...p, brandId: e.target.value }))}>
+                  <Select 
+                    value={form.brandId} 
+                    label="แบรนด์" 
+                    onChange={(e) => {
+                      const brandId = e.target.value;
+                      const brand = brands.find(b => b.id === brandId);
+                      setForm((p) => ({ 
+                        ...p, 
+                        brandId, 
+                        sku: p.sku || generateSKU(brand?.name || "", p.name) 
+                      }));
+                    }}
+                  >
                     {brands.map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
                   </Select>
                 </FormControl>

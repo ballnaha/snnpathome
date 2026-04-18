@@ -14,7 +14,16 @@ export default async function AdminSettingsPage() {
     prisma.order.count(),
     prisma.brand.count(),
     prisma.shippingMethod.count(),
-    prisma.siteSetting.upsert({ where: { id: "default" }, update: {}, create: { id: "default" } }),
+    prisma.siteSetting.upsert({
+      where: { id: "default" },
+      update: {},
+      create: { id: "default" },
+      include: {
+        announcementItems: {
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+    }),
   ]);
 
   const dbStats = [
@@ -89,6 +98,12 @@ export default async function AdminSettingsPage() {
             serviceHours: siteSettings.serviceHours,
             bankAccountInfo: siteSettings.bankAccountInfo,
             companyAddress: siteSettings.companyAddress,
+            announcementActive: siteSettings.announcementActive,
+            announcementItems: siteSettings.announcementItems.map((item) => ({
+              id: item.id,
+              imageUrl: item.imageUrl,
+              link: item.link ?? "",
+            })),
           }}
           updatedAt={siteSettings.updatedAt.toISOString()}
         />

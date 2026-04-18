@@ -22,19 +22,21 @@ export const SnackbarProvider = ({ children }: { children: ReactNode }) => {
   const [message, setMessage] = useState("");
   const [severity, setSeverity] = useState<AlertColor>("success");
 
-  const showSnackbar = (msg: string, sev: AlertColor = "success") => {
+  const showSnackbar = React.useCallback((msg: string, sev: AlertColor = "success") => {
     setMessage(msg);
     setSeverity(sev);
     setOpen(true);
-  };
+  }, []);
 
   const handleClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === "clickaway") return;
     setOpen(false);
   };
 
+  const contextValue = React.useMemo(() => ({ showSnackbar }), [showSnackbar]);
+
   return (
-    <SnackbarContext.Provider value={{ showSnackbar }}>
+    <SnackbarContext.Provider value={contextValue}>
       {children}
       <Snackbar 
         open={open} 

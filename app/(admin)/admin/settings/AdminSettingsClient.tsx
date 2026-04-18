@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
-import { Facebook, Instagram, TickCircle, Video, CloseCircle, MessageQuestion } from "iconsax-react";
+import { Box, Button, CircularProgress, Divider, InputAdornment, Paper, Stack, TextField, Typography, Switch, FormControlLabel, IconButton } from "@mui/material";
+import { Facebook, Instagram, TickCircle, Video, CloseCircle, MessageQuestion, Notification, Gallery, Link1, Add, Trash } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
+import ImageUploader, { ImageUploaderRef } from "@/components/ImageUploader";
 
 const SOCIAL_KEYS = ["facebookUrl", "instagramUrl", "youtubeUrl", "lineUrl"] as const;
 type SocialKey = (typeof SOCIAL_KEYS)[number];
@@ -20,6 +21,8 @@ interface AdminSettingsClientProps {
     serviceHours: string | null;
     bankAccountInfo: string | null;
     companyAddress: string | null;
+    announcementActive: boolean;
+    announcementItems: { id: string; imageUrl: string; link: string }[];
   };
   updatedAt: string;
 }
@@ -38,7 +41,11 @@ export default function AdminSettingsClient({ initialSettings, updatedAt }: Admi
     serviceHours: initialSettings.serviceHours ?? "",
     bankAccountInfo: initialSettings.bankAccountInfo ?? "",
     companyAddress: initialSettings.companyAddress ?? "",
+    announcementActive: initialSettings.announcementActive,
+    announcementItems: initialSettings.announcementItems,
   });
+
+  const uploaderRefs = React.useRef<Record<string, ImageUploaderRef | null>>({});
 
   const errors = React.useMemo(() => {
     const nextErrors: Record<SocialKey, string> = {
@@ -67,8 +74,34 @@ export default function AdminSettingsClient({ initialSettings, updatedAt }: Admi
 
   const hasErrors = Object.values(errors).some(Boolean);
 
-  const handleChange = (key: keyof typeof form, value: string) => {
+  const handleChange = (key: keyof typeof form, value: any) => {
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleAddItem = () => {
+    setForm((curr) => ({
+      ...curr,
+      announcementItems: [
+        ...curr.announcementItems,
+        { id: `new-${Date.now()}`, imageUrl: "", link: "" },
+      ],
+    }));
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setForm((curr) => ({
+      ...curr,
+      announcementItems: curr.announcementItems.filter((item) => item.id !== id),
+    }));
+  };
+
+  const handleItemChange = (id: string, field: "imageUrl" | "link", value: string) => {
+    setForm((curr) => ({
+      ...curr,
+      announcementItems: curr.announcementItems.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      ),
+    }));
   };
 
   const handleSave = async () => {
@@ -79,10 +112,29 @@ export default function AdminSettingsClient({ initialSettings, updatedAt }: Admi
 
     setSaving(true);
     try {
+      // Handle Image Uploads for all items
+      const updatedItems = await Promise.all(
+        form.announcementItems.map(async (item) => {
+          const ref = uploaderRefs.current[item.id];
+          if (ref) {
+            try {
+              const uploadedUrl = await ref.upload();
+              return { ...item, imageUrl: uploadedUrl };
+            } catch (e) {
+              throw e;
+            }
+          }
+          return item;
+        })
+      );
+
       const response = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          announcementItems: updatedItems
+        }),
       });
 
       if (!response.ok) {
@@ -102,8 +154,8 @@ export default function AdminSettingsClient({ initialSettings, updatedAt }: Admi
     <Paper elevation={0} sx={{ borderRadius: 3.5, border: "1px solid", borderColor: "grey.200", overflow: "hidden" }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} sx={{ px: 3, py: 2.2, borderBottom: "1px solid", borderColor: "grey.100", bgcolor: "grey.50" }}>
         <Stack direction="row" alignItems="center" gap={1.5}>
-        <MessageQuestion size="20" color="#d71414" variant="Bold" />
-        <Box>
+          <MessageQuestion size="20" color="#d71414" variant="Bold" />
+          <Box>
             <Typography fontWeight={900}>ตั้งค่าข้อมูลสำหรับแสดงบนเว็บไซต์</Typography>
             <Typography variant="caption" color="text.secondary">จัดการลิงก์โซเชียล ช่องทางติดต่อ บัญชีธนาคาร และที่อยู่</Typography>
           </Box>
@@ -221,6 +273,91 @@ export default function AdminSettingsClient({ initialSettings, updatedAt }: Admi
             />
           </Stack>
         </Box>
+
+        <Box sx={{ border: "1px solid", borderColor: "grey.200", borderRadius: 3, p: 2.2, bgcolor: form.announcementActive ? "rgba(215, 20, 20, 0.02)" : "transparent" }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+            <Stack direction="row" alignItems="center" gap={1}>
+              <Notification size="20" color="#d71414" variant="Bold" />
+              <Typography variant="subtitle2" fontWeight={900}>ป๊อปอัพแจ้งเตือน (Announcement Modal)</Typography>
+            </Stack>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.announcementActive}
+                  onChange={(e) => handleChange("announcementActive", e.target.checked)}
+                  color="primary"
+                />
+              }
+              label={<Typography variant="body2" fontWeight={700}>{form.announcementActive ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Typography>}
+            />
+          </Stack>
+
+          <Stack spacing={3}>
+            {form.announcementItems.map((item, index) => (
+              <Box
+                key={item.id}
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  bgcolor: "grey.50",
+                  border: "1px solid",
+                  borderColor: "grey.200",
+                  position: "relative"
+                }}
+              >
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Typography variant="caption" fontWeight={900} color="primary.main">
+                    รูปที่ {index + 1}
+                  </Typography>
+                  <IconButton size="small" onClick={() => handleRemoveItem(item.id)} sx={{ color: "error.main" }}>
+                    <Trash size="16" color="#d71414" />
+                  </IconButton>
+                </Stack>
+
+                <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <Box>
+                    <ImageUploader
+                      ref={(el) => { uploaderRefs.current[item.id] = el; }}
+                      value={item.imageUrl}
+                      onChange={(url) => handleItemChange(item.id, "imageUrl", url)}
+                      size={120}
+                    />
+                  </Box>
+
+                  <Stack spacing={2} sx={{ flexGrow: 1, minWidth: 250 }}>
+                    <TextField
+                      label="ลิงก์ปลายทาง (URL)"
+                      fullWidth
+                      size="small"
+                      value={item.link}
+                      onChange={(e) => handleItemChange(item.id, "link", e.target.value)}
+                      placeholder="https://snnpathome.com/promotions"
+                      disabled={!form.announcementActive}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start"><Link1 size="16" color="#999" /></InputAdornment>
+                      }}
+                    />
+                  </Stack>
+                </Box>
+              </Box>
+            ))}
+
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={<Add size="18" />}
+              onClick={handleAddItem}
+              disabled={form.announcementItems.length >= 5}
+              sx={{ borderRadius: 2.5, py: 1.5, borderStyle: "dashed" }}
+            >
+              เพิ่มรูปภาพ {form.announcementItems.length > 0 ? "เพิ่ม" : ""} ({form.announcementItems.length}/5)
+            </Button>
+
+            <Typography variant="caption" color="text.secondary">
+              แนะนำขนาดรูปภาพ 800x800px หรือแนวตั้งเพื่อให้แสดงผลสวยงามบนมือถือ (เพิ่มได้สูงสุด 5 รูป)
+            </Typography>
+          </Stack>
+        </Box>
       </Stack>
 
       <Divider />
@@ -242,6 +379,8 @@ export default function AdminSettingsClient({ initialSettings, updatedAt }: Admi
               serviceHours: initialSettings.serviceHours ?? "",
               bankAccountInfo: initialSettings.bankAccountInfo ?? "",
               companyAddress: initialSettings.companyAddress ?? "",
+              announcementActive: initialSettings.announcementActive,
+              announcementItems: initialSettings.announcementItems,
             })}
             startIcon={<CloseCircle size="16" color="currentColor" />}
             sx={{ fontWeight: 700 }}

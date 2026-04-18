@@ -36,6 +36,7 @@ import { useSnackbar } from "@/components/SnackbarProvider";
 
 interface ProductDetail {
   id: string;
+  sku: string | null;
   name: string;
   slug: string;
   description: string | null;
@@ -81,7 +82,13 @@ export default function ProductDetailClient({ product, relatedProducts, socialLi
   const [quantity, setQuantity] = React.useState(1);
   // selectedMode is only relevant when sellMode === "BOTH"
   const [selectedMode, setSelectedMode] = React.useState<"CASE" | "UNIT">("CASE");
-  const hasShareLinks = Boolean(socialLinks.facebookUrl || socialLinks.instagramUrl);
+  const [currentUrl, setCurrentUrl] = React.useState("");
+
+  React.useEffect(() => {
+    setCurrentUrl(window.location.href);
+  }, []);
+
+  const hasShareLinks = true; // Always show share buttons now
   const galleryImages = React.useMemo(() => {
     const uniqueImages = product.images.length > 0 ? product.images : product.image ? [product.image] : [];
     return Array.from(new Set(uniqueImages.filter(Boolean)));
@@ -257,6 +264,11 @@ export default function ProductDetailClient({ product, relatedProducts, socialLi
                 <Typography variant="h2" fontWeight="900" sx={{ fontSize: { xs: '1.5rem', md: '2.2rem' }, lineHeight: 1.25, mt: 0.5 }}>
                   {product.name}
                 </Typography>
+                {product.sku && (
+                  <Typography variant="caption" color="text.disabled" fontWeight={700} sx={{ mt: 0.5, display: 'block' }}>
+                    SKU: {product.sku}
+                  </Typography>
+                )}
               </Box>
 
               {/* Sell Mode Toggle — only shown when BOTH */}
@@ -373,24 +385,40 @@ export default function ProductDetailClient({ product, relatedProducts, socialLi
                   {/* Social and Chat */}
                   <Stack direction="row" spacing={2} alignItems="center">
                     <Button
-                      component={socialLinks.lineUrl ? "a" : "button"}
-                      href={socialLinks.lineUrl ?? undefined}
-                      target={socialLinks.lineUrl ? "_blank" : undefined}
-                      rel={socialLinks.lineUrl ? "noreferrer" : undefined}
+                      component="a"
+                      href="https://www.messenger.com/t/snnpathome"
+                      target="_blank"
+                      rel="noreferrer"
                       startIcon={<MessageQuestion variant="Bold" color="#0084FF" />}
                       sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.82rem' }}
                     >
                       แชทเลย
                     </Button>
-                    {hasShareLinks && <Divider orientation="vertical" flexItem sx={{ height: 20 }} />}
+                    <Divider orientation="vertical" flexItem sx={{ height: 20 }} />
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                      {hasShareLinks && <Typography variant="caption" color="grey.400" fontWeight="700">SHARE :</Typography>}
-                      {socialLinks.facebookUrl && (
-                        <IconButton component="a" href={socialLinks.facebookUrl} target="_blank" rel="noreferrer" size="small" aria-label="Share on Facebook"><Facebook variant="Bold" size="18" color="#1877F2" /></IconButton>
-                      )}
-                      {socialLinks.instagramUrl && (
-                        <IconButton component="a" href={socialLinks.instagramUrl} target="_blank" rel="noreferrer" size="small" aria-label="Share on Instagram"><Instagram variant="Bold" size="18" color="#E4405F" /></IconButton>
-                      )}
+                      <Typography variant="caption" color="grey.400" fontWeight="700">SHARE :</Typography>
+                      <IconButton 
+                        component="a" 
+                        href={currentUrl ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}` : "#"} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        size="small" 
+                        aria-label="Share on Facebook"
+                        sx={{ visibility: currentUrl ? "visible" : "hidden" }}
+                      >
+                        <Facebook variant="Bold" size={18} color="#1877F2" />
+                      </IconButton>
+                      <IconButton 
+                        component="a" 
+                        href={currentUrl ? `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(currentUrl)}` : "#"} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        size="small" 
+                        aria-label="Share on LINE"
+                        sx={{ visibility: currentUrl ? "visible" : "hidden" }}
+                      >
+                        <Box sx={{ width: 18, height: 18, bgcolor: "#06C755", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "8px", fontWeight: 900 }}>L</Box>
+                      </IconButton>
                     </Stack>
                   </Stack>
                 </Stack>

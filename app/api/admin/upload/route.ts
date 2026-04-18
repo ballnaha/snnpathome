@@ -59,3 +59,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "เกิดข้อผิดพลาดในการอัปโหลด" }, { status: 500 });
   }
 }
+export async function DELETE(req: NextRequest) {
+  const session = await requireAdminSession();
+  if (!session) return adminUnauthorizedResponse("ไม่มีสิทธิ์", 403);
+
+  try {
+    const { url } = await req.json();
+    if (!url || typeof url !== "string") {
+      return NextResponse.json({ error: "ไม่พบ URL" }, { status: 400 });
+    }
+
+    // Safety check: only allow deleting from /uploads/ folder
+    if (!url.startsWith("/uploads/")) {
+      return NextResponse.json({ error: "ไม่อนุญาตให้ลบไฟล์นอกโฟลเดอร์ uploads" }, { status: 403 });
+    }
+
+    // Sanitize path to prevent directory traversal
+    const relativePath = url.replace(/^\//, "").replace(/\.\./g, "");
+    const fullPath = path.join(process.cwd(), "public", relativePath);
+
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: "ไม่พบไฟล์ที่ต้องการลบ" }, { status: 404 });
+  } catch (err) {
+    console.error("[delete-upload]", err);
+    return NextResponse.json({ error: "เกิดข้อผิดพลาดในการลบไฟล์" }, { status: 500 });
+  }
+}

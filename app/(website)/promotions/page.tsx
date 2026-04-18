@@ -1,10 +1,10 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Box, Breadcrumbs, Button, Chip, Container, Stack, Typography } from "@mui/material";
+import { Box, Breadcrumbs, Button, Container, Stack, Typography } from "@mui/material";
 import Link from "next/link";
 import { ArrowRight2 } from "iconsax-react";
 import prisma from "@/lib/prisma";
-import { formatCouponBenefit, formatCouponCondition, getPublicActiveCoupons } from "@/lib/public-coupons";
+
 
 export const metadata: Metadata = {
   title: "โปรโมชั่น",
@@ -12,13 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default async function PromotionsPage() {
-  const [promotions, coupons] = await Promise.all([
-    prisma.promotion.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-    }),
-    getPublicActiveCoupons(),
-  ]);
+  const promotions = await prisma.promotion.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+  });
 
   return (
     <Box sx={{ bgcolor: "#f8f9fa", minHeight: "100vh", pb: { xs: 10, md: 6 } }}>
@@ -46,74 +43,7 @@ export default async function PromotionsPage() {
           </Typography>
         </Breadcrumbs>
 
-        {coupons.length > 0 && (
-          <Box
-            sx={{
-              mb: { xs: 3, md: 4 },
-              borderRadius: 4,
-              border: "1px solid",
-              borderColor: "warning.light",
-              background: "linear-gradient(135deg, rgba(255,247,223,0.9), rgba(255,255,255,1))",
-              p: { xs: 2.5, md: 3.5 },
-            }}
-          >
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}>
-              <Box>
-                <Typography variant="overline" fontWeight={900} sx={{ color: "warning.dark", letterSpacing: 1.8 }}>
-                  COUPON HIGHLIGHTS
-                </Typography>
-                <Typography variant="h5" fontWeight={900} sx={{ mt: 0.5, mb: 1 }}>
-                  คูปองส่วนลดที่ใช้ได้ตอนนี้
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  กดดูรายละเอียดเงื่อนไขก่อนคัดลอกรหัสไปใช้ที่หน้า checkout เพื่อลดการกรอกผิด
-                </Typography>
-              </Box>
-              <Button component={Link} href="/checkout" variant="contained" sx={{ alignSelf: { xs: "flex-start", md: "center" }, borderRadius: 999, fontWeight: 800, px: 2.5 }}>
-                ไปหน้า checkout
-              </Button>
-            </Stack>
 
-            <Box sx={{ mt: 2.5, display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2 }}>
-              {coupons.map((coupon) => (
-                <Box
-                  key={coupon.id}
-                  sx={{
-                    bgcolor: "white",
-                    borderRadius: 3,
-                    border: "1px solid",
-                    borderColor: "rgba(216,183,90,0.28)",
-                    p: 2,
-                    boxShadow: "0 10px 24px rgba(138,106,24,0.08)",
-                  }}
-                >
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
-                    <Box>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                        <Chip label={coupon.code} size="small" sx={{ fontWeight: 900, bgcolor: "#fff1c2", color: "#8a6a18" }} />
-                        <Typography variant="body2" fontWeight={900}>
-                          {formatCouponBenefit(coupon)}
-                        </Typography>
-                      </Stack>
-                      <Typography variant="subtitle2" fontWeight={900} sx={{ mt: 1 }}>
-                        {coupon.name}
-                      </Typography>
-                      {coupon.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                          {coupon.description}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Stack>
-
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.25 }}>
-                    เงื่อนไข: {formatCouponCondition(coupon)}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        )}
 
         {promotions.length === 0 ? (
           <Box

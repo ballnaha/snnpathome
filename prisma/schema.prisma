@@ -86,6 +86,7 @@ model Brand {
 
 model Product {
   id           String   @id @default(cuid())
+  sku          String?  @unique
   name         String
   slug         String   @unique
   description  String?  @db.LongText
@@ -205,6 +206,7 @@ model OrderItem {
   productId   String   @db.VarChar(500)
   productName String
   productImage String? @db.Text
+  productSku   String? @db.VarChar(255)
   price       Decimal  @db.Decimal(10, 2)
   quantity    Int
 
@@ -238,6 +240,24 @@ model SiteSetting {
   serviceHours String? @db.Text
   bankAccountInfo String? @db.LongText
   companyAddress String? @db.LongText
+  
+  // Announcement Popup
+  announcementActive Boolean @default(false)
+  announcementItems  AnnouncementItem[]
+
   updatedAt    DateTime @updatedAt
   createdAt    DateTime @default(now())
+}
+
+model AnnouncementItem {
+  id        String   @id @default(cuid())
+  imageUrl  String   @db.Text
+  link      String?  @db.Text
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  siteSettingId String
+  siteSetting   SiteSetting @relation(fields: [siteSettingId], references: [id], onDelete: Cascade)
+
+  @@index([siteSettingId, sortOrder])
 }

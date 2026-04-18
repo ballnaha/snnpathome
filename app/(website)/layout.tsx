@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import CookieConsent from "@/components/CookieConsent";
 import { Box } from "@mui/material";
 
 export default function WebsiteLayout({
@@ -17,6 +18,7 @@ export default function WebsiteLayout({
       <Footer />
       <CartDrawer />
       <MobileBottomNav />
+      <CookieConsent />
     </Box>
   );
 }

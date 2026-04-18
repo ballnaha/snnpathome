@@ -118,6 +118,13 @@ export async function POST(req: NextRequest) {
     // Generate sequential order number (YYMM + running)
     const orderNumber = await generateOrderNumber();
 
+    // Fetch product details from DB to get SKUs and verify prices (optional but recommended)
+    const dbProducts = await prisma.product.findMany({
+      where: { id: { in: items.map(i => i.id) } },
+      select: { id: true, sku: true }
+    });
+    const skuMap = new Map(dbProducts.map(p => [p.id, p.sku]));
+
     const order = await prisma.order.create({
       data: {
         orderNumber,
@@ -143,6 +150,7 @@ export async function POST(req: NextRequest) {
             productId: item.id,
             productName: item.name,
             productImage: item.image ?? null,
+            productSku: skuMap.get(item.id) || null,
             price: item.price,
             quantity: item.quantity,
           })),

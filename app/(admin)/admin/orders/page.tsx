@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -19,6 +20,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -28,7 +30,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { Dayjs } from "dayjs";
 import "dayjs/locale/th";
-import { Eye, ReceiptText, SearchNormal1, ShoppingCart } from "iconsax-react";
+import { Eye, ReceiptText, SearchNormal1, ShoppingCart, CloseCircle, Trash } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
 import ConfirmActionDialog from "@/components/ConfirmActionDialog";
 
@@ -38,6 +40,7 @@ interface AdminOrderItem {
   id: string;
   productName: string;
   productImage: string | null;
+  productSku: string | null;
   price: number;
   quantity: number;
 }
@@ -101,6 +104,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState<Dayjs | null>(null);
@@ -109,6 +113,12 @@ export default function AdminOrdersPage() {
   const [maxTotal, setMaxTotal] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<{ orderId: string; nextStatus: OrderStatus } | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [viewingSlipUrl, setViewingSlipUrl] = useState<string | null>(null);
+
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -134,6 +144,22 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleDeleteOrder = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("ไม่สามารถลบคำสั่งซื้อได้");
+      setOrders((prev) => prev.filter((o) => o.id !== id));
+      showSnackbar("ลบคำสั่งซื้อเรียบร้อยแล้ว", "success");
+      if (selectedOrder?.id === id) setSelectedOrder(null);
+    } catch (err: any) {
+      showSnackbar(err.message, "error");
+    } finally {
+      setDeletingId(null);
+      setDeleteConfirmId(null);
+    }
+  };
 
   const filteredOrders = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -165,12 +191,24 @@ export default function AdminOrdersPage() {
     });
   }, [dateFrom, dateTo, maxTotal, minTotal, orders, searchTerm, statusFilter]);
 
+  // Handle page change when filter changes
+  useEffect(() => {
+    setPage(0);
+  }, [statusFilter, searchTerm, dateFrom, dateTo, minTotal, maxTotal]);
+
+  const pagedOrders = useMemo(() => {
+    return filteredOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [filteredOrders, page, rowsPerPage]);
+
   const summaryCards = useMemo(() => {
     return [
-      { label: "ทั้งหมด", value: orders.length, color: "default" as const },
-      { label: "รอชำระเงิน", value: orders.filter((order) => order.status === "PENDING").length, color: "warning" as const },
-      { label: "ชำระแล้ว", value: orders.filter((order) => order.status === "PAID").length, color: "info" as const },
-      { label: "จัดส่งสำเร็จ", value: orders.filter((order) => order.status === "DELIVERED").length, color: "success" as const },
+      { label: "ทั้งหมด", value: orders.length, color: "default" as const, status: "ALL" as const },
+      { label: "รอชำระเงิน", value: orders.filter((order) => order.status === "PENDING").length, color: "warning" as const, status: "PENDING" as const },
+      { label: "ชำระแล้ว", value: orders.filter((order) => order.status === "PAID").length, color: "info" as const, status: "PAID" as const },
+      { label: "กำลังเตรียมจัดส่ง", value: orders.filter((order) => order.status === "PROCESSING").length, color: "info" as const, status: "PROCESSING" as const },
+      { label: "จัดส่งแล้ว", value: orders.filter((order) => order.status === "SHIPPED").length, color: "info" as const, status: "SHIPPED" as const },
+      { label: "จัดส่งสำเร็จ", value: orders.filter((order) => order.status === "DELIVERED").length, color: "success" as const, status: "DELIVERED" as const },
+      { label: "ยกเลิก", value: orders.filter((order) => order.status === "CANCELLED").length, color: "error" as const, status: "CANCELLED" as const },
     ];
   }, [orders]);
 
@@ -240,9 +278,27 @@ export default function AdminOrdersPage() {
         </Button>
       </Stack>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2, mb: 3 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)", lg: "repeat(7, 1fr)" }, gap: 2, mb: 3 }}>
         {summaryCards.map((card) => (
-          <Paper key={card.label} elevation={0} sx={{ p: 2.25, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
+          <Paper 
+            key={card.label} 
+            elevation={0} 
+            onClick={() => setStatusFilter(card.status)}
+            sx={{ 
+              p: 2.25, 
+              borderRadius: 3, 
+              border: "1px solid", 
+              borderColor: statusFilter === card.status ? "primary.main" : "grey.200",
+              bgcolor: statusFilter === card.status ? "rgba(215, 20, 20, 0.04)" : "white",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              "&:hover": {
+                borderColor: "primary.main",
+                transform: "translateY(-2px)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.06)"
+              }
+            }}
+          >
             <Stack spacing={1}>
               <Chip label={card.label} color={card.color} size="small" sx={{ width: "fit-content", fontWeight: 800 }} />
               <Typography variant="h5" fontWeight={900}>{card.value.toLocaleString()}</Typography>
@@ -349,101 +405,121 @@ export default function AdminOrdersPage() {
             <Typography color="text.secondary" mt={2}>ไม่พบคำสั่งซื้อที่ตรงกับเงื่อนไข</Typography>
           </Box>
         ) : (
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ bgcolor: "grey.50" }}>
-                  <TableCell sx={{ fontWeight: 800 }}>เลขออเดอร์</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>ลูกค้า</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>ยอดชำระ</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>สลิป</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>สถานะ</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>วันที่สั่งซื้อ</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }} align="right">จัดการ</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredOrders.map((order) => {
-                  const status = STATUS_META[order.status];
+          <Box>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "grey.50" }}>
+                    <TableCell sx={{ fontWeight: 800 }}>เลขออเดอร์</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>ลูกค้า</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>ยอดชำระ</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>สลิป</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>สถานะ</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>วันที่สั่งซื้อ</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }} align="right">จัดการ</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pagedOrders.map((order) => {
+                    const status = STATUS_META[order.status];
 
-                  return (
-                    <TableRow key={order.id} hover>
-                      <TableCell>
-                        <Typography fontWeight={900} color="primary.main">{order.orderNumber}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {order.items.length} รายการ
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontWeight={700}>{order.firstName} {order.lastName}</Typography>
-                        <Typography variant="body2" color="text.secondary">{order.phone}</Typography>
-                        {order.email && <Typography variant="caption" color="text.secondary">{order.email}</Typography>}
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontWeight={800}>{formatMoney(order.total)}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {order.shippingMethodName || "ไม่ระบุรูปแบบการจัดส่ง"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={order.slipUrl ? "มีสลิป" : "ยังไม่มีสลิป"}
-                          color={order.slipUrl ? "success" : "default"}
-                          size="small"
-                          sx={{ fontWeight: 800 }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ minWidth: 180 }}>
-                        <Stack spacing={1}>
-                          <Chip label={status.label} color={status.color} size="small" sx={{ width: "fit-content", fontWeight: 800 }} />
-                          <TextField
-                            select
+                    return (
+                      <TableRow key={order.id} hover>
+                        <TableCell>
+                          <Typography fontWeight={900} color="primary.main">{order.orderNumber}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {order.items.length} รายการ
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography fontWeight={700}>{order.firstName} {order.lastName}</Typography>
+                          <Typography variant="body2" color="text.secondary">{order.phone}</Typography>
+                          {order.email && <Typography variant="caption" color="text.secondary">{order.email}</Typography>}
+                        </TableCell>
+                        <TableCell>
+                          <Typography fontWeight={800}>{formatMoney(order.total)}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {order.shippingMethodName || "ไม่ระบุรูปแบบการจัดส่ง"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={order.slipUrl ? "มีสลิป" : "ยังไม่มีสลิป"}
+                            color={order.slipUrl ? "success" : "default"}
                             size="small"
-                            value={order.status}
-                            disabled={updatingId === order.id}
-                            onChange={(event) => requestStatusChange(order.id, event.target.value as OrderStatus)}
-                          >
-                            {STATUS_OPTIONS.filter((option) => option.value !== "ALL").map((option) => (
-                              <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
-                            ))}
-                          </TextField>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{formatDateTime(order.createdAt)}</Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          {order.slipUrl && (
-                            <Button
-                              component="a"
-                              href={order.slipUrl}
-                              target="_blank"
-                              rel="noreferrer"
+                            sx={{ fontWeight: 800 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ minWidth: 180 }}>
+                          <Stack spacing={1}>
+                            <Chip label={status.label} color={status.color} size="small" sx={{ width: "fit-content", fontWeight: 800 }} />
+                            <TextField
+                              select
                               size="small"
-                              variant="outlined"
-                              sx={{ borderRadius: 2.5, fontWeight: 700 }}
+                              value={order.status}
+                              disabled={updatingId === order.id}
+                              onChange={(event) => requestStatusChange(order.id, event.target.value as OrderStatus)}
                             >
-                              ดูสลิป
+                              {STATUS_OPTIONS.filter((option) => option.value !== "ALL").map((option) => (
+                                <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                              ))}
+                            </TextField>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{formatDateTime(order.createdAt)}</Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            {order.slipUrl && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => setViewingSlipUrl(order.slipUrl)}
+                                sx={{ borderRadius: 2.5, fontWeight: 700 }}
+                              >
+                                ดูสลิป
+                              </Button>
+                            )}
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<Eye size="16" color="white" />}
+                              onClick={() => setSelectedOrder(order)}
+                              sx={{ borderRadius: 2.5, fontWeight: 800 }}
+                            >
+                              รายละเอียด
                             </Button>
-                          )}
-                          <Button
-                            size="small"
-                            variant="contained"
-                            startIcon={<Eye size="16" color="white" />}
-                            onClick={() => setSelectedOrder(order)}
-                            sx={{ borderRadius: 2.5, fontWeight: 800 }}
-                          >
-                            รายละเอียด
-                          </Button>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => setDeleteConfirmId(order.id)}
+                            >
+                              <Trash size="18" />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              component="div"
+              count={filteredOrders.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={(e, newPage) => setPage(newPage)}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              labelRowsPerPage="จำนวนแถวต่อหน้า:"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} จาก ${count !== -1 ? count : `มากกว่า ${to}`}`}
+            />
+          </Box>
         )}
       </Paper>
 
@@ -463,6 +539,16 @@ export default function AdminOrdersPage() {
                 </Box>
                 <Stack spacing={1} alignItems={{ xs: "flex-start", md: "flex-end" }}>
                   <Chip label={STATUS_META[selectedOrder.status].label} color={STATUS_META[selectedOrder.status].color} sx={{ fontWeight: 800 }} />
+                  {selectedOrder.slipUrl && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setViewingSlipUrl(selectedOrder.slipUrl)}
+                      sx={{ borderRadius: 2.5, fontWeight: 700 }}
+                    >
+                      ดูสลิปหลักฐานการโอน
+                    </Button>
+                  )}
                   <Typography variant="body2" color="text.secondary">สร้างเมื่อ {formatDateTime(selectedOrder.createdAt)}</Typography>
                   <Typography variant="body2" color="text.secondary">อัปเดตล่าสุด {formatDateTime(selectedOrder.updatedAt)}</Typography>
                 </Stack>
@@ -484,9 +570,27 @@ export default function AdminOrdersPage() {
                     <Stack key={item.id} direction="row" justifyContent="space-between" alignItems="center" py={1.25} spacing={2}>
                       <Box>
                         <Typography fontWeight={700}>{item.productName}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatMoney(item.price)} x {item.quantity}
-                        </Typography>
+                        <Stack direction="row" spacing={1} alignItems="center" mt={0.5}>
+                          {item.productSku && (
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                bgcolor: "primary.main", 
+                                color: "white", 
+                                px: 0.8, 
+                                py: 0.2, 
+                                borderRadius: 1, 
+                                fontWeight: 800,
+                                fontSize: '0.65rem'
+                              }}
+                            >
+                              {item.productSku}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" color="text.secondary">
+                            {formatMoney(item.price)} x {item.quantity}
+                          </Typography>
+                        </Stack>
                       </Box>
                       <Typography fontWeight={800}>{formatMoney(item.price * item.quantity)}</Typography>
                     </Stack>
@@ -507,7 +611,15 @@ export default function AdminOrdersPage() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions sx={{ p: 2, justifyContent: "space-between" }}>
+          <Button 
+            color="error" 
+            startIcon={<Trash size="18" />}
+            onClick={() => setDeleteConfirmId(selectedOrder?.id || null)}
+            sx={{ fontWeight: 700 }}
+          >
+            ลบออเดอร์
+          </Button>
           <Button onClick={() => setSelectedOrder(null)} sx={{ fontWeight: 700 }}>ปิด</Button>
         </DialogActions>
       </Dialog>
@@ -529,6 +641,54 @@ export default function AdminOrdersPage() {
           });
         }}
       />
+
+      <ConfirmActionDialog
+        open={!!deleteConfirmId}
+        title="ลบคำสั่งซื้อถาวร"
+        message="คุณแน่ใจหรือไม่ว่าต้องการลบคำสั่งซื้อนี้? การกระทำนี้ไม่สามารถย้อนกลับได้และข้อมูลจะหายไปจากฐานข้อมูลทันที"
+        confirmText="ยืนยันการลบถาวร"
+        confirmColor="error"
+        loadingText="กำลังลบ..."
+        loading={!!deletingId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => deleteConfirmId && handleDeleteOrder(deleteConfirmId)}
+      />
+
+      <Dialog
+        open={!!viewingSlipUrl}
+        onClose={() => setViewingSlipUrl(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 4, overflow: "hidden" }
+        }}
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 900 }}>
+          หลักฐานการชำระเงิน
+          <Button
+            onClick={() => setViewingSlipUrl(null)}
+            sx={{ minWidth: 0, p: 0.5, color: "text.secondary" }}
+          >
+            <CloseCircle size="24" color="currentColor" />
+          </Button>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0, bgcolor: "grey.50", display: "flex", justifyContent: "center" }}>
+          {viewingSlipUrl && (
+            <Box
+              component="img"
+              src={viewingSlipUrl}
+              alt="Slip"
+              sx={{
+                width: "100%",
+                height: "auto",
+                maxHeight: "80vh",
+                objectFit: "contain",
+                display: "block"
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

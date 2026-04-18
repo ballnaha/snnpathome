@@ -9,7 +9,8 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
 
   const product = await prisma.product.findFirst({
     where: { slug, isActive: true, brand: { isActive: true } },
@@ -38,10 +39,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductDetailPage({ params }: Props) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
 
   const [product, siteSettings] = await Promise.all([
-    prisma.product.findUnique({
+    prisma.product.findFirst({
       where: { slug, isActive: true, brand: { isActive: true } },
       include: { brand: true, images: { orderBy: { sortOrder: "asc" } } },
     }),
@@ -61,6 +63,7 @@ export default async function ProductDetailPage({ params }: Props) {
     <ProductDetailClient
       product={{
         id: product.id,
+        sku: product.sku,
         name: product.name,
         slug: product.slug,
         description: product.description ?? null,
