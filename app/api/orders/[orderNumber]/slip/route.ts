@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
 import { verifyOrderAccessToken } from "@/lib/order-access";
+import { sendLineNotify } from "@/lib/line-notify";
 
 // Max allowed base64 payload ~5 MB decoded → ~6.8 MB encoded
 const MAX_BYTES = 7 * 1024 * 1024;
@@ -78,6 +79,18 @@ export async function PATCH(
       where: { id: order.id },
       data: { slipUrl: publicPath },
     });
+
+    // Send LINE Notification
+    try {
+      const message = `\n🔔 มีการแจ้งชำระเงินใหม่!\n📦 ออเดอร์: #${order.orderNumber}\n👤 ลูกค้า: ${order.firstName} ${order.lastName}\n💰 ยอดเงิน: ${Number(order.total).toLocaleString()} บาท\n🔗 ตรวจสอบ: ${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`;
+      // Send message with the public slip image URL
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://demo.snnpathome.com";
+      const imageUrl = `${baseUrl}${publicPath}`;
+      await sendLineNotify(message, imageUrl);
+    } catch (notifyError) {
+      // Don't fail the request if notification fails
+      console.error("[sendLineNotify Error]", notifyError);
+    }
 
     return NextResponse.json({ success: true, slipUrl: publicPath });
   } catch (error) {
