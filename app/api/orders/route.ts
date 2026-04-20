@@ -188,6 +188,7 @@ export async function POST(req: NextRequest) {
           quantity: i.quantity,
         })),
         bankAccountInfo: siteSettings?.bankAccountInfo ?? null,
+        shippingCost: normalizedShippingCost,
       }).catch((err) => console.error("[email] order confirmation failed:", err));
     }
 

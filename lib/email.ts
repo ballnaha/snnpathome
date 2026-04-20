@@ -28,6 +28,7 @@ interface SendOrderConfirmationOptions {
   discountCode?: string | null;
   items: OrderItem[];
   bankAccountInfo?: string | null;
+  shippingCost: number;
 }
 
 const DEFAULT_BANK_ACCOUNT_INFO = [
@@ -67,6 +68,7 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
     discountCode,
     items,
     bankAccountInfo,
+    shippingCost,
   } = opts;
 
   const bankInfoHtml = formatMultilineForHtml(
@@ -156,8 +158,12 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
               <!-- Totals -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
                 <tr>
-                  <td style="padding:5px 0; font-size:14px; color:#555;">ยอดรวม</td>
+                  <td style="padding:5px 0; font-size:14px; color:#555;">ยอดรวมสินค้า</td>
                   <td style="padding:5px 0; font-size:14px; text-align:right;">฿${subtotal.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 0; font-size:14px; color:#555;">ค่าจัดส่ง</td>
+                  <td style="padding:5px 0; font-size:14px; text-align:right;">${shippingCost > 0 ? `฿${shippingCost.toLocaleString()}` : "ฟรี"}</td>
                 </tr>
                 ${discount > 0 ? `
                 <tr>
