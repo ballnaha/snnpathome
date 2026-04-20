@@ -72,32 +72,29 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
   const bankInfoHtml = formatMultilineForHtml(
     (bankAccountInfo && bankAccountInfo.trim()) || DEFAULT_BANK_ACCOUNT_INFO
   );
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://demo.snnpathome.com";
+  const logoSrc = `${baseUrl}/images/logo.png`;
   const encodedOrderNumber = encodeURIComponent(orderNumber);
   const paymentNotificationUrl = `${baseUrl}/payment-notification?order=${encodedOrderNumber}`;
   const trackOrderUrl = `${baseUrl}/track-order?order=${encodedOrderNumber}`;
 
-  // Read logo as base64 for email embedding (works on localhost + production)
-  let logoSrc = "";
-  try {
-    const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
-    const logoBuffer = fs.readFileSync(logoPath);
-    logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-  } catch {
-    // logo not found — skip image
-  }
-
   const itemsHtml = items
     .map(
-      (item) => `
-      <tr>
-        <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
-          ${item.productImage ? `<img src="${item.productImage}" alt="${item.productName}" width="50" height="50" style="object-fit:contain; border-radius:6px; border:1px solid #eee; vertical-align:middle; margin-right:10px;" />` : ""}
-          <span style="font-weight:600;">${item.productName}</span>
-        </td>
-        <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align:center;">${item.quantity}</td>
-        <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align:right; font-weight:700;">฿${(item.price * item.quantity).toLocaleString()}</td>
-      </tr>`
+      (item) => {
+        const itemImage = item.productImage 
+          ? (item.productImage.startsWith("http") ? item.productImage : `${baseUrl}${item.productImage}`)
+          : null;
+        
+        return `
+        <tr>
+          <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+            ${itemImage ? `<img src="${itemImage}" alt="${item.productName}" width="50" height="50" style="object-fit:contain; border-radius:6px; border:1px solid #eee; vertical-align:middle; margin-right:10px;" />` : ""}
+            <span style="font-weight:600;">${item.productName}</span>
+          </td>
+          <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align:center;">${item.quantity}</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid #f0f0f0; text-align:right; font-weight:700;">฿${(item.price * item.quantity).toLocaleString()}</td>
+        </tr>`;
+      }
     )
     .join("");
 
@@ -223,17 +220,9 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
 }
 
 export async function sendPasswordResetEmail(email: string, token: string, name: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://demo.snnpathome.com";
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-
-  let logoSrc = "";
-  try {
-    const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
-    const logoBuffer = fs.readFileSync(logoPath);
-    logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-  } catch {
-    // logo not found
-  }
+  const logoSrc = `${baseUrl}/images/logo.png`;
 
   const html = `
 <!DOCTYPE html>
