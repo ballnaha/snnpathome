@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { 
   Box, 
   Container, 
@@ -23,7 +23,7 @@ import { Eye, EyeSlash, Google, DirectRight, Sms, Lock } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
 import { getGoogleOAuthDevHint, isUnsupportedGoogleOAuthOrigin } from "@/lib/google-oauth-origin";
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = React.useState(false);
   const [email, setEmail] = React.useState("");
@@ -260,5 +260,13 @@ export default function LoginPage() {
         </Box>
       </Container>
     </Box>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

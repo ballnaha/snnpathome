@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { Box, Breadcrumbs, Container, Stack, Typography } from "@mui/material";
 import Link from "next/link";
@@ -36,7 +36,9 @@ export default function TrackOrderPage() {
           </Typography>
         </Breadcrumbs>
 
-        <TrackOrderClient />
+        <Suspense fallback={null}>
+          <TrackOrderClient />
+        </Suspense>
       </Container>
     </Box>
   );
