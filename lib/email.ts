@@ -215,7 +215,7 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
   `;
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? "SNNP AT HOME <snnpathome@gmail.com>",
+    from: process.env.RESEND_FROM_EMAIL ?? "SNNP AT HOME <noreply@snnpathome.com>",
     to,
     subject: `ยืนยันคำสั่งซื้อ ${orderNumber} — SNNP AT HOME`,
     html,
@@ -277,7 +277,7 @@ export async function sendPasswordResetEmail(email: string, token: string, name:
   `;
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? "SNNP AT HOME <snnpathome@gmail.com>",
+    from: process.env.RESEND_FROM_EMAIL ?? "SNNP AT HOME <noreply@snnpathome.com>",
     to: email,
     subject: "ตั้งรหัสผ่านใหม่ — SNNP AT HOME",
     html,
