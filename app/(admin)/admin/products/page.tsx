@@ -6,7 +6,7 @@ import {
   InputAdornment, Chip, CircularProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, Switch, FormControlLabel,
   Select, MenuItem, FormControl, InputLabel, Avatar, Tooltip,
-  ToggleButton, ToggleButtonGroup,
+  ToggleButton, ToggleButtonGroup, Autocomplete,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination,
 } from "@mui/material";
 import { Add, Edit2, Trash, SearchNormal1, Shop, TickCircle, CloseCircle, Gallery, Flash } from "iconsax-react";
@@ -178,6 +178,12 @@ export default function AdminProductsPage() {
   const confirmedProduct = toggleConfirm
     ? products.find((product) => product.id === toggleConfirm.productId) ?? null
     : null;
+
+  const uniqueCaseLabels = Array.from(new Set(products.map((p) => p.caseLabel).filter(Boolean))) as string[];
+  const uniqueUnitLabels = Array.from(new Set(products.map((p) => p.unitLabel).filter(Boolean))) as string[];
+
+  const caseOptions = Array.from(new Set([...uniqueCaseLabels, "ลัง", "กล่อง", "แพ็ค", "โหล"]));
+  const unitOptions = Array.from(new Set([...uniqueUnitLabels, "ซอง", "ชิ้น", "ขวด", "กระป๋อง", "ถุง"]));
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 } }}>
@@ -387,19 +393,35 @@ export default function AdminProductsPage() {
                   </Typography>
                   <Stack spacing={1.5}>
                     <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5 }}>
-                      <TextField
-                        label="หน่วยหลัก" size="small"
-                        placeholder="ลัง"
+                      <Autocomplete
+                        freeSolo
+                        options={caseOptions}
                         value={form.caseLabel}
-                        onChange={(e) => setForm((p) => ({ ...p, caseLabel: e.target.value }))}
-                        helperText='เช่น "ลัง", "กล่อง"'
+                        onInputChange={(_, v) => setForm((p) => ({ ...p, caseLabel: v }))}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="หน่วยหลัก"
+                            size="small"
+                            placeholder="ลัง"
+                            helperText='เช่น "ลัง", "กล่อง"'
+                          />
+                        )}
                       />
-                      <TextField
-                        label="หน่วยย่อย" size="small"
-                        placeholder="ซอง"
+                      <Autocomplete
+                        freeSolo
+                        options={unitOptions}
                         value={form.unitLabel}
-                        onChange={(e) => setForm((p) => ({ ...p, unitLabel: e.target.value }))}
-                        helperText='เช่น "ซอง", "ชิ้น"'
+                        onInputChange={(_, v) => setForm((p) => ({ ...p, unitLabel: v }))}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="หน่วยย่อย"
+                            size="small"
+                            placeholder="ซอง"
+                            helperText='เช่น "ซอง", "ชิ้น"'
+                          />
+                        )}
                       />
                       <TextField
                         label="จำนวน / หน่วยหลัก" size="small" type="number"
