@@ -15,6 +15,7 @@ export default async function AdminUsersPage() {
       image: true,
       phone: true,
       role: true,
+      isActive: true,
       createdAt: true,
     },
   });

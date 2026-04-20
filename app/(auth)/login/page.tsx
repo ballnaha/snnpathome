@@ -12,6 +12,7 @@ import {
   Divider, 
   IconButton, 
   InputAdornment,
+  CircularProgress,
   Link as MuiLink
 } from "@mui/material";
 import Link from "next/link";
@@ -19,6 +20,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeSlash, Google, DirectRight, Sms, Lock } from "iconsax-react";
+import { useSnackbar } from "@/components/SnackbarProvider";
 import { getGoogleOAuthDevHint, isUnsupportedGoogleOAuthOrigin } from "@/lib/google-oauth-origin";
 
 export default function LoginPage() {
@@ -26,8 +28,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [googleHint, setGoogleHint] = React.useState<string | null>(null);
+  const errorType = searchParams.get("error");
   const loginReason = searchParams.get("reason");
+  const { showSnackbar } = useSnackbar();
+  const [loading, setLoading] = React.useState(false);
+  const [googleHint, setGoogleHint] = React.useState<string | null>(null);
+
   const loginNotice = loginReason === "admin-auth"
     ? "กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลเพื่อเข้าใช้งานหน้าจัดการระบบ"
     : loginReason === "signed-out"
@@ -38,21 +44,54 @@ export default function LoginPage() {
     setGoogleHint(getGoogleOAuthDevHint(window.location.href));
   }, []);
 
+  React.useEffect(() => {
+    if (errorType === "CredentialsSignin") {
+      showSnackbar("อีเมลหรือรหัสผ่านไม่ถูกต้อง", "error");
+    } else if (errorType) {
+      showSnackbar("เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง", "error");
+    }
+  }, [errorType, showSnackbar]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signIn("credentials", { 
-      email, 
-      password, 
-      callbackUrl: "/" 
-    });
-  };
-
-  const handleGoogleLogin = () => {
-    if (isUnsupportedGoogleOAuthOrigin(window.location.href)) {
+    if (!email || !password) {
+      showSnackbar("กรุณากรอกข้อมูลให้ครบถ้วน", "warning");
       return;
     }
 
-    signIn("google", { callbackUrl: "/" });
+    setLoading(true);
+    try {
+      const res = await signIn("credentials", { 
+        email, 
+        password, 
+        redirect: false,
+      });
+
+      if (res?.error) {
+        if (res.error === "CredentialsSignin" || res.error === "Invalid credentials") {
+          showSnackbar("อีเมลหรือรหัสผ่านไม่ถูกต้อง", "error");
+        } else if (res.error === "ACCOUNT_DISABLED") {
+          showSnackbar("บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่", "error");
+        } else {
+          showSnackbar("ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบข้อมูลอีกครั้ง", "error");
+        }
+      } else {
+        showSnackbar("เข้าสู่ระบบสำเร็จ!", "success");
+        window.location.href = searchParams.get("callbackUrl") || "/";
+      }
+    } catch (error) {
+      showSnackbar("เกิดข้อผิดพลาดที่ไม่คาดคิด", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    if (loading || isUnsupportedGoogleOAuthOrigin(window.location.href)) {
+      return;
+    }
+    setLoading(true);
+    signIn("google", { callbackUrl: searchParams.get("callbackUrl") || "/" });
   };
 
   return (
@@ -96,8 +135,8 @@ export default function LoginPage() {
                 fullWidth 
                 variant="outlined" 
                 onClick={handleGoogleLogin}
-                disabled={!!googleHint}
-                startIcon={<Google variant="Bold" color="#EA4335" size="18" />}
+                disabled={loading || !!googleHint}
+                startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <Google variant="Bold" color={loading ? "#ccc" : "#EA4335"} size="18" />}
                 sx={{ 
                   py: 1.2, 
                   borderRadius: 2, 
@@ -132,6 +171,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  disabled={loading}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -152,6 +192,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     InputLabelProps={{ shrink: true }}
+                    disabled={loading}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -180,15 +221,17 @@ export default function LoginPage() {
                   fullWidth 
                   variant="contained" 
                   color="primary"
+                  disabled={loading}
                   sx={{ 
                     py: 1.2, 
                     borderRadius: 2, 
                     fontWeight: 900, 
                     fontSize: '0.95rem',
-                    boxShadow: "0 4px 15px rgba(215, 20, 20, 0.2)" 
+                    boxShadow: "0 4px 15px rgba(215, 20, 20, 0.2)",
+                    height: 48
                   }}
                 >
-                  เข้าสู่ระบบ
+                  {loading ? <CircularProgress size={24} color="inherit" /> : "เข้าสู่ระบบ"}
                 </Button>
               </Stack>
             </Box>

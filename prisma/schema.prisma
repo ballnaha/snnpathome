@@ -53,6 +53,7 @@ model User {
   province      String?
   postcode      String?
   role          String    @default("USER") // ADMIN, USER
+  isActive      Boolean   @default(true) // Add this to enable/disable user
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -67,6 +68,15 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  token   String   @unique
+  email   String
+  expires DateTime
+
+  @@unique([email, token])
 }
 
 // --- E-Commerce Models ---

@@ -39,6 +39,7 @@ interface User {
   image: string | null;
   phone: string | null;
   role: string;
+  isActive: boolean;
   createdAt: Date;
 }
 
@@ -46,7 +47,7 @@ interface UsersClientProps {
   users: User[];
 }
 
-const EMPTY_FORM = { name: "", email: "", password: "", phone: "", role: "USER" };
+const EMPTY_FORM = { name: "", email: "", password: "", phone: "", role: "USER", isActive: true };
 
 export default function UsersClient({ users: initialUsers }: UsersClientProps) {
   const { showSnackbar } = useSnackbar();
@@ -82,7 +83,14 @@ export default function UsersClient({ users: initialUsers }: UsersClientProps) {
 
   const openEdit = (user: User) => {
     setEditingId(user.id);
-    setForm({ name: user.name ?? "", email: user.email ?? "", password: "", phone: user.phone ?? "", role: user.role });
+    setForm({ 
+      name: user.name ?? "", 
+      email: user.email ?? "", 
+      password: "", 
+      phone: user.phone ?? "", 
+      role: user.role,
+      isActive: user.isActive
+    });
     setDialogOpen(true);
   };
 
@@ -213,6 +221,7 @@ export default function UsersClient({ users: initialUsers }: UsersClientProps) {
                 <TableCell sx={{ fontWeight: 800 }}>ผู้ใช้งาน</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>บทบาท</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>เบอร์โทรศัพท์</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>สถานะ</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>วันที่สมัคร</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 800 }}>จัดการ</TableCell>
               </TableRow>
@@ -260,6 +269,18 @@ export default function UsersClient({ users: initialUsers }: UsersClientProps) {
                       <Typography variant="body2" color="text.secondary" fontWeight={600}>
                         {user.phone || "-"}
                       </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={user.isActive ? "ใช้งานปกติ" : "ระงับการใช้งาน"}
+                        size="small"
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: "0.75rem",
+                          bgcolor: user.isActive ? "success.50" : "error.50",
+                          color: user.isActive ? "success.main" : "error.main",
+                        }}
+                      />
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption" color="text.secondary" fontWeight={700}>
@@ -336,6 +357,17 @@ export default function UsersClient({ users: initialUsers }: UsersClientProps) {
               >
                 <MenuItem value="USER">User</MenuItem>
                 <MenuItem value="ADMIN">Admin</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>สถานะการใช้งาน</InputLabel>
+              <Select
+                value={form.isActive ? 1 : 0}
+                label="สถานะการใช้งาน"
+                onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.value === 1 }))}
+              >
+                <MenuItem value={1}>ใช้งานปกติ (Active)</MenuItem>
+                <MenuItem value={0}>ระงับการใช้งาน (Disabled)</MenuItem>
               </Select>
             </FormControl>
           </Stack>

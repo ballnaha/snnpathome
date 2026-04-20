@@ -69,6 +69,17 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!formData.phone.trim()) {
+      showSnackbar("กรุณากรอกเบอร์โทรศัพท์", "error");
+      return;
+    }
+
+    const phoneRegex = /^0[0-9]{9}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      showSnackbar("รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (ต้องมี 10 หลักและขึ้นต้นด้วย 0)", "error");
+      return;
+    }
+
     if (formData.password.length < 6) {
       showSnackbar("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", "error");
       return;
@@ -216,6 +227,8 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   InputLabelProps={{ shrink: true }}
                   disabled={loading}
+                  required
+                  inputProps={{ maxLength: 10 }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -279,7 +292,11 @@ export default function RegisterPage() {
 
                 <FormControlLabel 
                   control={<Checkbox size="small" defaultChecked color="primary" disabled={loading} />}
-                  label={<Typography variant="caption" color="text.secondary">ฉันยอมรับเงื่อนไขและข้อตกลงการใช้งาน</Typography>}
+                  label={
+                    <Typography variant="caption" color="text.secondary">
+                      ฉันยอมรับ <MuiLink component={Link} href="/terms-of-service" color="primary.main" underline="always" sx={{ fontWeight: 700 }}>เงื่อนไขและข้อตกลงการใช้งาน</MuiLink>
+                    </Typography>
+                  }
                   sx={{ mt: -1 }}
                 />
 
@@ -315,14 +332,15 @@ export default function RegisterPage() {
                 fullWidth 
                 variant="outlined" 
                 onClick={() => {
-                  if (isUnsupportedGoogleOAuthOrigin(window.location.href)) {
+                  if (loading || isUnsupportedGoogleOAuthOrigin(window.location.href)) {
                     return;
                   }
 
+                  setLoading(true);
                   signIn("google", { callbackUrl: "/" });
                 }}
                 disabled={loading || !!googleHint}
-                startIcon={<Google variant="Bold" color={loading ? "#ccc" : "#EA4335"} size="18" />}
+                startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <Google variant="Bold" color={loading ? "#ccc" : "#EA4335"} size="18" />}
                 sx={{ 
                   py: 1.2, 
                   borderRadius: 2, 

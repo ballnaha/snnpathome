@@ -221,3 +221,65 @@ export async function sendOrderConfirmationEmail(opts: SendOrderConfirmationOpti
     html,
   });
 }
+
+export async function sendPasswordResetEmail(email: string, token: string, name: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+  let logoSrc = "";
+  try {
+    const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
+    const logoBuffer = fs.readFileSync(logoPath);
+    logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+  } catch {
+    // logo not found
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ตั้งรหัสผ่านใหม่ — SNNP AT HOME</title>
+</head>
+<body style="margin:0; padding:0; background:#f4f4f5; font-family: sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" style="background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.05);">
+          <tr>
+            <td style="background:#d71414; padding: 30px; text-align:center;">
+              ${logoSrc ? `<img src="${logoSrc}" alt="SNNP AT HOME" width="120" style="display:block; margin:auto;" />` : `<h1 style="color:#fff; margin:0;">SNNP AT HOME</h1>`}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin:0 0 20px;">สวัสดีคุณ ${name} 👋</h2>
+              <p style="color:#555; line-height:1.6; margin-bottom:25px;">เราได้รับคำขอเปลี่ยนรหัสผ่านสำหรับบัญชีของคุณ หากคุณไม่ได้เป็นผู้ส่งคำขอนี้ สามารถข้ามอีเมลฉบับนี้ไปได้เลย</p>
+              
+              <div style="text-align:center; margin-bottom:30px;">
+                <a href="${resetUrl}" style="display:inline-block; background:#d71414; color:#fff; text-decoration:none; padding:14px 30px; border-radius:8px; font-weight:bold;">ตั้งรหัสผ่านใหม่</a>
+              </div>
+
+              <p style="color:#777; font-size:13px; line-height:1.6;">หากปุ่มด้านบนใช้งานไม่ได้ คุณสามารถคัดลอกลิงก์ด้านล่างไปวางในเบราว์เซอร์ของคุณ:</p>
+              <p style="color:#d71414; font-size:12px; word-break:break-all;">${resetUrl}</p>
+              
+              <hr style="border:none; border-top:1px solid #eee; margin:30px 0;" />
+              <p style="color:#aaa; font-size:12px;">ลิงก์นี้จะหมดอายุภายใน 1 ชั่วโมง เพื่อความปลอดภัยของบัญชีคุณ</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? "SNNP AT HOME <snnpathome@gmail.com>",
+    to: email,
+    subject: "ตั้งรหัสผ่านใหม่ — SNNP AT HOME",
+    html,
+  });
+}

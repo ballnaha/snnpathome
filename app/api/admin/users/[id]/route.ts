@@ -9,13 +9,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params;
   const body = await req.json();
-  const { name, email, password, phone, role } = body;
+  const { name, email, password, phone, role, isActive } = body;
 
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name;
   if (email !== undefined) data.email = email;
   if (phone !== undefined) data.phone = phone || null;
   if (role !== undefined) data.role = role === "ADMIN" ? "ADMIN" : "USER";
+  if (isActive !== undefined) data.isActive = !!isActive;
   if (password && password.trim() !== "") {
     data.password = await bcrypt.hash(password, 10);
   }
@@ -30,6 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       image: true,
       phone: true,
       role: true,
+      isActive: true,
       createdAt: true,
     },
   });

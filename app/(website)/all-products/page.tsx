@@ -14,11 +14,15 @@ import ProductCard from "@/components/ProductCard";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import AllProductsControls from "./AllProductsControls";
+import ProductPagination from "./ProductPagination";
+
+const PRODUCTS_PER_PAGE = 21;
 
 type SearchParams = Promise<{
   brand?: string;
   search?: string;
   sort?: string;
+  page?: string;
 }>;
 
 export async function generateMetadata({
@@ -66,7 +70,8 @@ export default async function AllProductsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { brand, search, sort } = await searchParams;
+  const { brand, search, sort, page } = await searchParams;
+  const currentPage = Math.max(1, parseInt(page ?? "1", 10) || 1);
 
   // Fetch brands for the sidebar
   const brands = await prisma.brand.findMany({
@@ -93,11 +98,18 @@ export default async function AllProductsPage({
         ? { price: "desc" }
         : { createdAt: "desc" };
 
-  const products = await prisma.product.findMany({
-    where,
-    orderBy,
-    include: { brand: true },
-  });
+  const [products, totalCount] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy,
+      include: { brand: true },
+      skip: (currentPage - 1) * PRODUCTS_PER_PAGE,
+      take: PRODUCTS_PER_PAGE,
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PRODUCTS_PER_PAGE);
 
   // Active brand info
   const activeBrand = brand
@@ -141,10 +153,10 @@ export default async function AllProductsPage({
           </Stack>
           <Typography variant="body2" color="text.secondary">
             {search
-              ? `ผลการค้นหา: "${search}" — พบ ${products.length} รายการ`
+              ? `ผลการค้นหา: "${search}" — พบ ${totalCount} รายการ`
               : activeBrand
-              ? `สินค้าแบรนด์ ${activeBrand.name} ทั้งหมด ${products.length} รายการ`
-              : `สินค้าทั้งหมด ${products.length} รายการ`}
+                ? `สินค้าแบรนด์ ${activeBrand.name} ทั้งหมด ${totalCount} รายการ`
+                : `สินค้าทั้งหมด ${totalCount} รายการ`}
           </Typography>
         </Container>
       </Box>
@@ -270,37 +282,47 @@ export default async function AllProductsPage({
 
             {/* Result count */}
             <Typography variant="body2" color="text.secondary" mb={2}>
-              {products.length === 0
+              {totalCount === 0
                 ? "ไม่พบสินค้า"
-                : `แสดง ${products.length} รายการ`}
+                : `แสดง ${(currentPage - 1) * PRODUCTS_PER_PAGE + 1}–${Math.min(currentPage * PRODUCTS_PER_PAGE, totalCount)} จาก ${totalCount} รายการ`}
             </Typography>
 
             {/* Grid */}
             {products.length > 0 ? (
-              <Box
-                display="grid"
-                gridTemplateColumns={{
-                  xs: "repeat(2, 1fr)",
-                  lg: "repeat(3, 1fr)",
-                }}
-                gap={{ xs: 1.5, md: 3 }}
-              >
-                {products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug}
-                    name={product.name}
-                    price={Number(product.price)}
-                    image={product.image ?? ""}
-                    isBestSeller={product.isBestSeller}
-                    createdAt={product.createdAt.toISOString()}
-                    unitsPerCase={product.unitsPerCase}
-                    unitLabel={product.unitLabel}
-                    caseLabel={product.caseLabel}
+              <>
+                <Box
+                  display="grid"
+                  gridTemplateColumns={{
+                    xs: "repeat(2, 1fr)",
+                    lg: "repeat(3, 1fr)",
+                  }}
+                  gap={{ xs: 1.5, md: 3 }}
+                >
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      id={product.id}
+                      slug={product.slug}
+                      name={product.name}
+                      price={Number(product.price)}
+                      image={product.image ?? ""}
+                      isBestSeller={product.isBestSeller}
+                      createdAt={product.createdAt.toISOString()}
+                      unitsPerCase={product.unitsPerCase}
+                      unitLabel={product.unitLabel}
+                      caseLabel={product.caseLabel}
+                    />
+                  ))}
+                </Box>
+
+                {/* Pagination */}
+                <Suspense>
+                  <ProductPagination
+                    totalPages={totalPages}
+                    currentPage={currentPage}
                   />
-                ))}
-              </Box>
+                </Suspense>
+              </>
             ) : (
               <Box
                 sx={{
