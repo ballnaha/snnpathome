@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     default: "SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP ส่งตรงถึงบ้าน",
     template: "%s | SNNP AT HOME"
   },
-  description: "แหล่งรวมสินค้าคุณภาพจาก SNNP - Bento, Jele, Lotus, Bakery House และอีกมากมาย สั่งซื้อออนไลน์ ส่งตรงถึงบ้านคุณในราคาพิเศษ พร้อมโปรโมชั่นดีๆ ทุกวัน",
+  description: "SNNP AT HOME อีกหนึ่งบริการที่มอบความสะดวกสบาย พร้อมตอบสนองไลฟ์สไตล์ สั่งง่าย อิ่มอร่อย ได้ทุกที่ สั่งซื้อผลิตภัณฑ์ในเครือ SNNP ผ่านเว็บไซต์ พร้อมบริการจัดส่งฟรี เมื่อมียอดสั่งซื้อขั้นต่ำ 300 บาท",
   keywords: [
     "SNNP", "SNNP AT HOME", "เบนโตะ", "เจเล่", "โลตัส", "เบเกอรี่เฮ้าส์",
     "ขนมขบเคี้ยว", "สั่งขนมออนไลน์", "ขนมส่งตรงถึงบ้าน",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP",
-    description: "แหล่งรวมสินค้าคุณภาพจากเครือ SNNP ส่งตรงถึงบ้านคุณในราคาพิเศษ พร้อมโปรโมชั่นดีๆ ทุกวัน",
+    description: "SNNP AT HOME อีกหนึ่งบริการที่มอบความสะดวกสบาย สั่งง่าย อิ่มอร่อย ได้ทุกที่ สั่งซื้อผลิตภัณฑ์ในเครือ SNNP พร้อมบริการจัดส่งฟรี เมื่อมียอดสั่งซื้อขั้นต่ำ 300 บาท",
     type: "website",
     locale: "th_TH",
     siteName: "SNNP AT HOME",
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP",
-    description: "แหล่งรวมสินค้าคุณภาพจากเครือ SNNP ส่งตรงถึงบ้านคุณในราคาพิเศษ",
+    description: "SNNP AT HOME สั่งซื้อผลิตภัณฑ์ในเครือ SNNP พร้อมบริการจัดส่งฟรี เมื่อมียอดสั่งซื้อขั้นต่ำ 300 บาท",
     images: ["/images/banner.jpg"],
   },
   alternates: {

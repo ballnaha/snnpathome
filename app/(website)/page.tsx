@@ -13,11 +13,11 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://demo.snnpathome.co
 export const metadata: Metadata = {
   title: "SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP ส่งตรงถึงบ้าน",
   description:
-    "สั่งซื้อสินค้าออนไลน์จากเครือ SNNP — Bento, Jele, Lotus, Bakery House และอีกมากมาย ส่งตรงถึงบ้านคุณในราคาพิเศษ ครบทุกแบรนด์ พร้อมโปรโมชั่นดีๆ ทุกวัน",
+    "SNNP AT HOME อีกหนึ่งบริการที่มอบความสะดวกสบาย พร้อมตอบสนองไลฟ์สไตล์ สั่งง่าย อิ่มอร่อย ได้ทุกที่ สั่งซื้อผลิตภัณฑ์ในเครือ SNNP พร้อมบริการจัดส่งฟรี เมื่อมียอดสั่งซื้อขั้นต่ำ 300 บาท",
   openGraph: {
     title: "SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP ส่งตรงถึงบ้าน",
     description:
-      "แหล่งรวมสินค้าคุณภาพจากเครือ SNNP — Bento, Jele, Lotus, Bakery House สั่งซื้อออนไลน์ ส่งตรงถึงบ้านคุณ พร้อมโปรโมชั่นพิเศษทุกวัน",
+      "SNNP AT HOME อีกหนึ่งบริการที่มอบความสะดวกสบาย สั่งง่าย อิ่มอร่อย ได้ทุกที่ พร้อมบริการจัดส่งฟรี",
     type: "website",
     url: "/",
     images: [
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP",
-    description: "สั่งซื้อสินค้าออนไลน์จากเครือ SNNP ส่งตรงถึงบ้านคุณในราคาพิเศษ",
+    description: "SNNP AT HOME สั่งซื้อผลิตภัณฑ์ในเครือ SNNP พร้อมบริการจัดส่งฟรี เมื่อมียอดสั่งซื้อขั้นต่ำ 300 บาท",
     images: ["/images/banner.jpg"],
   },
   alternates: {
@@ -82,8 +82,64 @@ export default async function Home() {
     }),
   ]);
 
+  // JSON-LD Structured Data
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "SNNP AT HOME",
+    url: BASE_URL,
+    logo: `${BASE_URL}/images/logo.png`,
+    description: "SNNP AT HOME อีกหนึ่งบริการที่มอบความสะดวกสบาย พร้อมตอบสนองไลฟ์สไตล์ สั่งง่าย อิ่มอร่อย ได้ทุกที่ สั่งซื้อผลิตภัณฑ์ในเครือ SNNP ผ่านเว็บไซต์",
+    parentOrganization: {
+      "@type": "Organization",
+      name: "Srinanaporn Marketing Public Company Limited",
+    },
+  };
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "SNNP AT HOME",
+    url: BASE_URL,
+    description: "SNNP AT HOME สั่งซื้อผลิตภัณฑ์ในเครือ SNNP พร้อมบริการจัดส่งฟรี เมื่อมียอดสั่งซื้อขั้นต่ำ 300 บาท",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${BASE_URL}/all-products?search={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "หน้าแรก",
+        item: BASE_URL,
+      },
+    ],
+  };
+
   return (
     <Box sx={{ pb: { xs: 8, md: 0 } }}>
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <AnnouncementModal
         active={siteSettings?.announcementActive ?? false}
         items={(siteSettings?.announcementItems || []).map(item => ({
@@ -92,7 +148,7 @@ export default async function Home() {
         }))}
       />
       <Typography variant="h1" sx={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", border: 0 }}>
-        SNNP AT HOME - สั่งซื้อออนไลน์สินค้าเครือ SNNP เบนโตะ เจเล่ โลตัส
+        SNNP AT HOME - สั่งง่าย อิ่มอร่อย ได้ทุกที่ สั่งซื้อผลิตภัณฑ์ในเครือ SNNP
       </Typography>
 
       <Box component="main">
