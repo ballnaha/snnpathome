@@ -3,6 +3,7 @@ import "./globals.css";
 import Providers from "./providers";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://demo.snnpathome.com"),
@@ -80,6 +81,7 @@ export default async function RootLayout({
   return (
     <html lang="th" className="antialiased">
       <body className="flex flex-col min-h-[100dvh]">
+        <GoogleAnalytics ga_id={process.env.NEXT_PUBLIC_GA_ID || ""} />
         <Providers session={session}>{children}</Providers>
       </body>
     </html>
