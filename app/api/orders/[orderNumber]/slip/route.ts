@@ -82,7 +82,18 @@ export async function PATCH(
 
     // Send LINE Notification
     try {
-      const message = `\n🔔 มีการแจ้งชำระเงินใหม่!\n📦 ออเดอร์: #${order.orderNumber}\n👤 ลูกค้า: ${order.firstName} ${order.lastName}\n💰 ยอดเงิน: ${Number(order.total).toLocaleString()} บาท\n🔗 ตรวจสอบ: ${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`;
+      const addressString = `${order.address} ${order.subdistrict} ${order.district} ${order.province} ${order.postcode}`.trim().replace(/\s+/g, " ");
+      const message = 
+`🔔 ยืนยันการแจ้งชำระเงินใหม่
+━━━━━━━━━━━━━━━━━━
+📦 หมายเลขคำสั่งซื้อ: #${order.orderNumber}
+👤 ชื่อลูกค้า: ${order.firstName} ${order.lastName}
+📞 เบอร์โทร: ${order.phone}
+📍 จัดส่งที่: ${addressString}
+💰 ยอดชำระสุทธิ: ฿${Number(order.total).toLocaleString()} 
+━━━━━━━━━━━━━━━━━━
+✓ ลูกค้าได้ทำการแนบสลิปการโอนเงินเรียบร้อยแล้ว แอดมินสามารถตรวจสอบความถูกต้องได้ที่ระบบจัดการคำสั่งซื้อ`;
+
       // Send message with the public slip image URL
       const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://demo.snnpathome.com";
       const imageUrl = `${baseUrl}${publicPath}`;
