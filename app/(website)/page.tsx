@@ -82,64 +82,8 @@ export default async function Home() {
     }),
   ]);
 
-  // JSON-LD Structured Data
-  const organizationJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "SNNP AT HOME",
-    url: BASE_URL,
-    logo: `${BASE_URL}/images/logo.png`,
-    description: "สั่งซื้อสินค้าออนไลน์จากเครือ SNNP ส่งตรงถึงบ้านคุณ",
-    parentOrganization: {
-      "@type": "Organization",
-      name: "Srinanaporn Marketing Public Company Limited",
-    },
-  };
-
-  const websiteJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "SNNP AT HOME",
-    url: BASE_URL,
-    description: "แหล่งรวมสินค้าคุณภาพจากเครือ SNNP ส่งตรงถึงบ้านคุณในราคาพิเศษ",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${BASE_URL}/all-products?search={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
-  };
-
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "หน้าแรก",
-        item: BASE_URL,
-      },
-    ],
-  };
-
   return (
     <Box sx={{ pb: { xs: 8, md: 0 } }}>
-      {/* JSON-LD Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
       <AnnouncementModal
         active={siteSettings?.announcementActive ?? false}
         items={(siteSettings?.announcementItems || []).map(item => ({
