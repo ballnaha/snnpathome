@@ -56,7 +56,7 @@ export async function generateMetadata({
 
   return {
     title: "สินค้าทั้งหมด",
-    description: "รวมสินค้าทั้งหมดจากเครือ SNNP — Bento, Jele, Lotus, Squidy และอีกมากมาย สั่งซื้อออนไลน์ได้เลย",
+    description: "รวมสินค้าทั้งหมดจากเครือ SNNP — Bento, Jele, Lotus, Bakery House และอีกมากมาย สั่งซื้อออนไลน์ได้เลย",
     openGraph: {
       title: "สินค้าทั้งหมด | SNNP AT HOME",
       description: "เลือกซื้อสินค้าจากเครือ SNNP ครบทุกแบรนด์",
