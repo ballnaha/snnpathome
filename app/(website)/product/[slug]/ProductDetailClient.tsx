@@ -166,6 +166,9 @@ export default function ProductDetailClient({ product, relatedProducts, socialLi
           <MuiLink component={Link} href="/all-products" color="inherit" sx={{ fontSize: '0.74rem', textDecoration: 'none' }}>
             สินค้า
           </MuiLink>
+          <MuiLink component={Link} href={`/all-products?brand=${product.brand.slug}`} color="inherit" sx={{ fontSize: '0.74rem', textDecoration: 'none' }}>
+            {product.brand.name}
+          </MuiLink>
           <Typography color="primary.main" fontWeight="700" sx={{ fontSize: '0.74rem' }} noWrap>
             {product.name}
           </Typography>
@@ -175,6 +178,9 @@ export default function ProductDetailClient({ product, relatedProducts, socialLi
         <Breadcrumbs separator={<ArrowRight2 size="12" color="#999" />} sx={{ mb: { xs: 2, md: 4 }, display: { xs: 'none', md: 'flex' }, px: { xs: 2, sm: 0 } }}>
           <MuiLink component={Link} href="/" color="inherit" sx={{ fontSize: '0.78rem' }}>หน้าแรก</MuiLink>
           <MuiLink component={Link} href="/all-products" color="inherit" sx={{ fontSize: '0.78rem' }}>สินค้าทั้งหมด</MuiLink>
+          <MuiLink component={Link} href={`/all-products?brand=${product.brand.slug}`} color="inherit" sx={{ fontSize: '0.78rem' }}>
+            {product.brand.name}
+          </MuiLink>
           <Typography color="primary.main" fontWeight="600" sx={{ fontSize: '0.78rem' }} noWrap>{product.name}</Typography>
         </Breadcrumbs>
 
