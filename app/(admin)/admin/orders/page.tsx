@@ -665,12 +665,24 @@ export default function AdminOrdersPage() {
       >
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 900 }}>
           หลักฐานการชำระเงิน
-          <Button
-            onClick={() => setViewingSlipUrl(null)}
-            sx={{ minWidth: 0, p: 0.5, color: "text.secondary" }}
-          >
-            <CloseCircle size="24" color="currentColor" />
-          </Button>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              size="small"
+              component="a"
+              href={viewingSlipUrl || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ fontWeight: 700, fontSize: "0.8rem" }}
+            >
+              เปิดในแท็บใหม่
+            </Button>
+            <Button
+              onClick={() => setViewingSlipUrl(null)}
+              sx={{ minWidth: 0, p: 0.5, color: "text.secondary" }}
+            >
+              <CloseCircle size="24" color="currentColor" />
+            </Button>
+          </Stack>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 0, bgcolor: "grey.50", display: "flex", justifyContent: "center" }}>
           {viewingSlipUrl && (

@@ -142,6 +142,21 @@ export default function AdminSettingsClient({ initialSettings, updatedAt }: Admi
         return;
       }
 
+      // Cleanup: Delete files that were removed from the initial list
+      // 1. Identify URLs that were in initialSettings but are NOT in the final updatedItems
+      const initialUrls = initialSettings.announcementItems.map(item => item.imageUrl).filter(url => url && url.startsWith("/uploads/"));
+      const finalUrls = new Set(updatedItems.map(item => item.imageUrl));
+      
+      const urlsToDelete = initialUrls.filter(url => !finalUrls.has(url));
+      
+      // 2. Call DELETE API for each removed file
+      urlsToDelete.forEach(url => {
+        fetch("/api/admin/upload", {
+          method: "DELETE",
+          body: JSON.stringify({ url })
+        }).catch(err => console.error("Failed to cleanup removed file:", err));
+      });
+
       showSnackbar("บันทึกการตั้งค่าเรียบร้อย", "success");
     } catch {
       showSnackbar("บันทึกการตั้งค่าไม่สำเร็จ", "error");

@@ -9,7 +9,7 @@ import { adminUnauthorizedResponse, requireAdminSession } from "@/lib/admin-auth
 const MAX_SIZE = 10 * 1024 * 1024;
 
 /** Resize longest edge to this px */
-const MAX_DIM = 400;
+const MAX_DIM = 1600;
 
 export async function POST(req: NextRequest) {
   const session = await requireAdminSession();

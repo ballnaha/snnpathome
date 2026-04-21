@@ -36,6 +36,7 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(function 
   useImperativeHandle(ref, () => ({
     upload: async () => {
       if (!pendingFile) return value;
+      const oldUrl = value;
       setError(null);
       setUploading(true);
       try {
@@ -47,6 +48,15 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(function 
           throw new Error(d.error ?? "อัปโหลดไม่สำเร็จ");
         }
         const { url } = await res.json();
+
+        // If we successfully uploaded a new file and there was an old one on the server, delete the old one
+        if (oldUrl && oldUrl.startsWith("/uploads/")) {
+          fetch(endpoint, {
+            method: "DELETE",
+            body: JSON.stringify({ url: oldUrl }),
+          }).catch((err) => console.error("Failed to delete old file during replacement:", err));
+        }
+
         setPendingFile(null);
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl("");
