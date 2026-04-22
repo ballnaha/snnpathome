@@ -49,11 +49,22 @@ async function generateOrderNumber(): Promise<string> {
 
   let next = 1;
   if (last) {
-    const running = parseInt(last.orderNumber.slice(prefix.length), 10);
-    if (!isNaN(running)) next = running + 1;
+    const runningStr = last.orderNumber.slice(prefix.length);
+    // Use regex to match only the leading digits for the running number
+    const match = runningStr.match(/^\d+/);
+    if (match) {
+      const running = parseInt(match[0], 10);
+      if (!isNaN(running)) next = running + 1;
+    }
   }
 
-  return `${prefix}${String(next).padStart(3, "0")}`;
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let randomSuffix = "";
+  for (let i = 0; i < 3; i++) {
+    randomSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return `${prefix}${String(next).padStart(3, "0")}${randomSuffix}`;
 }
 
 export async function POST(req: NextRequest) {

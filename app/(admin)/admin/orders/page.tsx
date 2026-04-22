@@ -30,9 +30,11 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { Dayjs } from "dayjs";
 import "dayjs/locale/th";
-import { Eye, ReceiptText, SearchNormal1, ShoppingCart, CloseCircle, Trash } from "iconsax-react";
+import { Eye, ReceiptText, SearchNormal1, ShoppingCart, CloseCircle, Trash, Printer } from "iconsax-react";
 import { useSnackbar } from "@/components/SnackbarProvider";
 import ConfirmActionDialog from "@/components/ConfirmActionDialog";
+import { useReactToPrint } from "react-to-print";
+import { OrderPrintTemplate } from "./OrderPrintTemplate";
 
 type OrderStatus = "PENDING" | "PAID" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
@@ -115,6 +117,13 @@ export default function AdminOrdersPage() {
   const [statusConfirm, setStatusConfirm] = useState<{ orderId: string; nextStatus: OrderStatus } | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [viewingSlipUrl, setViewingSlipUrl] = useState<string | null>(null);
+  const [siteSettings, setSiteSettings] = useState<any>(null);
+
+  const printRef = React.useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: selectedOrder ? `Order_${selectedOrder.orderNumber}` : "Order",
+  });
 
   // Pagination states
   const [page, setPage] = useState(0);
@@ -133,6 +142,12 @@ export default function AdminOrdersPage() {
       }
 
       setOrders(Array.isArray(data) ? (data as AdminOrder[]) : []);
+
+      const settingsRes = await fetch("/api/admin/settings");
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json().catch(() => null);
+        setSiteSettings(settingsData);
+      }
     } catch {
       setOrders([]);
       showSnackbar("ไม่สามารถโหลดคำสั่งซื้อได้", "error");
@@ -280,14 +295,14 @@ export default function AdminOrdersPage() {
 
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)", lg: "repeat(7, 1fr)" }, gap: 2, mb: 3 }}>
         {summaryCards.map((card) => (
-          <Paper 
-            key={card.label} 
-            elevation={0} 
+          <Paper
+            key={card.label}
+            elevation={0}
             onClick={() => setStatusFilter(card.status)}
-            sx={{ 
-              p: 2.25, 
-              borderRadius: 3, 
-              border: "1px solid", 
+            sx={{
+              p: 2.25,
+              borderRadius: 3,
+              border: "1px solid",
               borderColor: statusFilter === card.status ? "primary.main" : "grey.200",
               bgcolor: statusFilter === card.status ? "rgba(215, 20, 20, 0.04)" : "white",
               cursor: "pointer",
@@ -490,8 +505,8 @@ export default function AdminOrdersPage() {
                             >
                               รายละเอียด
                             </Button>
-                            <IconButton 
-                              size="small" 
+                            <IconButton
+                              size="small"
                               color="error"
                               onClick={() => setDeleteConfirmId(order.id)}
                             >
@@ -572,14 +587,14 @@ export default function AdminOrdersPage() {
                         <Typography fontWeight={700}>{item.productName}</Typography>
                         <Stack direction="row" spacing={1} alignItems="center" mt={0.5}>
                           {item.productSku && (
-                            <Typography 
-                              variant="caption" 
-                              sx={{ 
-                                bgcolor: "primary.main", 
-                                color: "white", 
-                                px: 0.8, 
-                                py: 0.2, 
-                                borderRadius: 1, 
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                bgcolor: "primary.main",
+                                color: "white",
+                                px: 0.8,
+                                py: 0.2,
+                                borderRadius: 1,
                                 fontWeight: 800,
                                 fontSize: '0.65rem'
                               }}
@@ -612,15 +627,25 @@ export default function AdminOrdersPage() {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2, justifyContent: "space-between" }}>
-          <Button 
-            color="error" 
-            startIcon={<Trash size="18" />}
+          <Button
+            color="error"
+            startIcon={<Trash size="18" color="currentColor" />}
             onClick={() => setDeleteConfirmId(selectedOrder?.id || null)}
             sx={{ fontWeight: 700 }}
           >
             ลบออเดอร์
           </Button>
-          <Button onClick={() => setSelectedOrder(null)} sx={{ fontWeight: 700 }}>ปิด</Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              startIcon={<Printer size="18" color="currentColor" />}
+              onClick={() => handlePrint()}
+              sx={{ fontWeight: 700, borderRadius: 2.5 }}
+            >
+              พิมพ์ใบสั่งซื้อ
+            </Button>
+            <Button onClick={() => setSelectedOrder(null)} sx={{ fontWeight: 700 }}>ปิด</Button>
+          </Stack>
         </DialogActions>
       </Dialog>
 
@@ -701,6 +726,8 @@ export default function AdminOrdersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {selectedOrder && <OrderPrintTemplate order={selectedOrder} siteSettings={siteSettings} ref={printRef} />}
     </Box>
   );
 }

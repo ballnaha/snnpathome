@@ -30,16 +30,16 @@ export default function ProductCard({ id, name, price, originalPrice, image, slu
 
   return (
     <Link href={`/product/${productSlug}`} style={{ textDecoration: 'none' }}>
-      <Card 
+      <Card
         elevation={0}
-        sx={{ 
-          maxWidth: 300, 
-          borderRadius: 4, 
-          border: 1, 
-          borderColor: "grey.200", 
-          transition: "transform 0.2s, border-color 0.2s, box-shadow 0.2s", 
-          "&:hover": { 
-            transform: "translateY(-4px)", 
+        sx={{
+          maxWidth: 300,
+          borderRadius: 4,
+          border: 1,
+          borderColor: "grey.200",
+          transition: "transform 0.2s, border-color 0.2s, box-shadow 0.2s",
+          "&:hover": {
+            transform: "translateY(-4px)",
             borderColor: "primary.main",
             boxShadow: "0 10px 30px rgba(0,0,0,0.05)"
           },
@@ -52,10 +52,10 @@ export default function ProductCard({ id, name, price, originalPrice, image, slu
       >
         {/* Badges top-left */}
         {(isBestSeller || isNew) && (
-          <Stack 
-            direction="column" 
-            gap={0.5} 
-            alignItems="flex-start" 
+          <Stack
+            direction="column"
+            gap={0.5}
+            alignItems="flex-start"
             sx={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}
           >
             {isBestSeller && (
@@ -79,14 +79,14 @@ export default function ProductCard({ id, name, price, originalPrice, image, slu
           sx={{ objectFit: 'contain', p: 2, transition: '0.3s', "&:hover": { transform: 'scale(1.05)' } }}
         />
         <CardContent sx={{ textAlign: "center", pb: 3, pt: 1, flexGrow: 1 }}>
-          <Typography 
-            variant="body1" 
-            fontWeight="700" 
-            gutterBottom 
-            sx={{ 
-              height: 48, 
-              fontSize: '0.9rem', 
-              lineHeight: 1.5,
+          <Typography
+            variant="body1"
+            fontWeight="500"
+            gutterBottom
+            sx={{
+              height: 60,
+              fontSize: '1.1rem',
+              lineHeight: 1.7,
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 2,
