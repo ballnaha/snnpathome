@@ -7,15 +7,35 @@ export const metadata: Metadata = { title: "แดชบอร์ด | SNNP Admi
 interface MonthStats { month: number; revenue: number; orders: number; }
 interface YearStats { year: number; revenue: number; orders: number; pendingOrders: number; newUsers: number; months: MonthStats[]; }
 
-export default async function AdminDashboardPage() {
-  const [ordersRaw, usersRaw, productsCount, recentOrders] = await Promise.all([
+export default async function AdminDashboardPage(props: {
+  searchParams: Promise<{ year?: string; page?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+  const currentYear = new Date().getFullYear();
+  const selectedYear = searchParams.year ? parseInt(searchParams.year) : currentYear;
+  const page = searchParams.page ? parseInt(searchParams.page) : 1;
+  const pageSize = 10;
+
+  const startOfYear = new Date(selectedYear, 0, 1);
+  const endOfYear = new Date(selectedYear, 11, 31, 23, 59, 59);
+
+  const [ordersRaw, usersRaw, productsCount, yearOrders, totalYearOrders] = await Promise.all([
     prisma.order.findMany({ select: { createdAt: true, total: true, status: true } }),
     prisma.user.findMany({ select: { createdAt: true } }),
     prisma.product.count(),
     prisma.order.findMany({
+      where: {
+        createdAt: { gte: startOfYear, lte: endOfYear },
+      },
       orderBy: { createdAt: "desc" },
-      take: 8,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       select: { orderNumber: true, firstName: true, lastName: true, total: true, status: true, createdAt: true },
+    }),
+    prisma.order.count({
+      where: {
+        createdAt: { gte: startOfYear, lte: endOfYear },
+      },
     }),
   ]);
 
@@ -69,7 +89,11 @@ export default async function AdminDashboardPage() {
       yearStats={yearStats}
       productsCount={productsCount}
       totalUsers={totalUsers}
-      recentOrders={recentOrders.map((o) => ({
+      initialYear={selectedYear}
+      initialPage={page}
+      totalPages={Math.ceil(totalYearOrders / pageSize)}
+      totalOrdersInYear={totalYearOrders}
+      recentOrders={yearOrders.map((o) => ({
         orderNumber: o.orderNumber,
         firstName: o.firstName,
         lastName: o.lastName,

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   Box, Typography, Paper, Stack, Chip, Select, MenuItem,
-  FormControl, Tooltip,
+  FormControl, Tooltip, Pagination,
 } from "@mui/material";
-import { MoneyRecive, ClipboardText, Clock, Profile2User, BagHappy, TrendUp, User } from "iconsax-react";
+import { MoneyRecive, ClipboardText, Clock, Profile2User, BagHappy, TrendUp, User, ArrowRight, ArrowLeft } from "iconsax-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 const MONTH_NAMES = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
@@ -27,6 +28,10 @@ interface Props {
   productsCount: number;
   totalUsers: number;
   recentOrders: RecentOrder[];
+  initialYear: number;
+  initialPage: number;
+  totalPages: number;
+  totalOrdersInYear: number;
 }
 
 function TrendBadge({ current, previous }: { current: number; previous?: number }) {
@@ -40,10 +45,28 @@ function TrendBadge({ current, previous }: { current: number; previous?: number 
   );
 }
 
-export default function AdminDashboardClient({ yearStats, productsCount, totalUsers, recentOrders }: Props) {
-  const currentYear = new Date().getFullYear();
-  const defaultYear = yearStats.find((y) => y.year === currentYear)?.year ?? yearStats[0]?.year ?? currentYear;
-  const [selectedYear, setSelectedYear] = useState(defaultYear);
+export default function AdminDashboardClient({ 
+  yearStats, productsCount, totalUsers, recentOrders, 
+  initialYear, initialPage, totalPages, totalOrdersInYear 
+}: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const selectedYear = initialYear;
+
+  const handleYearChange = (year: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("year", year.toString());
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page.toString());
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const stats = yearStats.find((y) => y.year === selectedYear) ?? {
     year: selectedYear, revenue: 0, orders: 0, pendingOrders: 0, newUsers: 0,
@@ -89,7 +112,7 @@ export default function AdminDashboardClient({ yearStats, productsCount, totalUs
         <FormControl size="small">
           <Select
             value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            onChange={(e) => handleYearChange(Number(e.target.value))}
             sx={{ borderRadius: 2.5, fontWeight: 800, minWidth: 100 }}
           >
             {yearStats.map((y) => (
@@ -187,9 +210,12 @@ export default function AdminDashboardClient({ yearStats, productsCount, totalUs
       {/* Recent Orders */}
       <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid", borderColor: "grey.100", overflow: "hidden" }}>
         <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
-          <Stack direction="row" alignItems="center" gap={1}>
-            <TrendUp size="20" color="#d71414" variant="Bold" />
-            <Typography fontWeight={900}>คำสั่งซื้อล่าสุด</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack direction="row" alignItems="center" gap={1}>
+              <TrendUp size="20" color="#d71414" variant="Bold" />
+              <Typography fontWeight={900}>คำสั่งซื้อในปี {selectedYear}</Typography>
+              <Chip label={`${totalOrdersInYear} รายการ`} size="small" variant="outlined" sx={{ fontWeight: 800, ml: 1 }} />
+            </Stack>
           </Stack>
         </Box>
         <Box sx={{ overflowX: "auto" }}>
@@ -225,6 +251,19 @@ export default function AdminDashboardClient({ yearStats, productsCount, totalUs
               )}
             </tbody>
           </table>
+        </Box>
+        <Box sx={{ p: 2, display: "flex", justifyContent: "center", borderTop: "1px solid", borderColor: "grey.100" }}>
+          <Pagination 
+            count={totalPages} 
+            page={initialPage} 
+            onChange={handlePageChange}
+            color="primary"
+            shape="rounded"
+            size="medium"
+            sx={{
+              "& .MuiPaginationItem-root": { fontWeight: 800 },
+            }}
+          />
         </Box>
       </Paper>
     </Box>

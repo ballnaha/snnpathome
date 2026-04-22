@@ -118,45 +118,77 @@ export async function POST(req: NextRequest) {
     // Generate sequential order number (YYMM + running)
     const orderNumber = await generateOrderNumber();
 
-    // Fetch product details from DB to get SKUs and verify prices (optional but recommended)
+    // Fetch product details from DB to get SKUs and verify stock
     const dbProducts = await prisma.product.findMany({
       where: { id: { in: items.map(i => i.id) } },
-      select: { id: true, sku: true }
+      select: { id: true, sku: true, stock: true, name: true }
     });
+
+    // Check stock availability
+    for (const item of items) {
+      const dbProduct = dbProducts.find(p => p.id === item.id);
+      if (!dbProduct) {
+        return NextResponse.json({ error: `ไม่พบสินค้า "${item.name}"` }, { status: 400 });
+      }
+      if (dbProduct.stock < item.quantity) {
+        return NextResponse.json({ 
+          error: `สินค้า "${dbProduct.name}" คงเหลือไม่พอ (คงเหลือ ${dbProduct.stock} ชิ้น)` 
+        }, { status: 400 });
+      }
+    }
+
     const skuMap = new Map(dbProducts.map(p => [p.id, p.sku]));
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        subtotal: normalizedSubtotal,
-        discount: appliedDiscount,
-        discountCode: appliedDiscountCode,
-        total: normalizedTotal,
-        email: email ?? null,
-        firstName,
-        lastName,
-        address,
-        subdistrict,
-        district,
-        province,
-        postcode,
-        phone,
-        shippingMethodId: shippingMethodId ?? null,
-        shippingMethodName: shippingMethodName ?? null,
-        shippingCost: normalizedShippingCost,
-        userId,
-        items: {
-          create: items.map((item) => ({
-            productId: item.id,
-            productName: item.name,
-            productImage: item.image ?? null,
-            productSku: skuMap.get(item.id) || null,
-            price: item.price,
-            quantity: item.quantity,
-          })),
+    // Use transaction to ensure both order creation and stock deduction succeed
+    const order = await prisma.$transaction(async (tx) => {
+      // 1. Create the order
+      const createdOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          subtotal: normalizedSubtotal,
+          discount: appliedDiscount,
+          discountCode: appliedDiscountCode,
+          total: normalizedTotal,
+          email: email ?? null,
+          firstName,
+          lastName,
+          address,
+          subdistrict,
+          district,
+          province,
+          postcode,
+          phone,
+          shippingMethodId: shippingMethodId ?? null,
+          shippingMethodName: shippingMethodName ?? null,
+          shippingCost: normalizedShippingCost,
+          userId,
+          items: {
+            create: items.map((item) => ({
+              productId: item.id,
+              productName: item.name,
+              productImage: item.image ?? null,
+              productSku: skuMap.get(item.id) || null,
+              price: item.price,
+              quantity: item.quantity,
+            })),
+          },
         },
-      },
-      include: { items: true },
+        include: { items: true },
+      });
+
+      // 2. Decrement stock for each item
+      for (const item of items) {
+        await tx.product.update({
+          where: { id: item.id },
+          data: {
+            stock: {
+              decrement: item.quantity
+            }
+          }
+        });
+      }
+
+      return createdOrder;
     });
 
     // Send order confirmation email (non-blocking)

@@ -20,29 +20,57 @@ export async function PATCH(
 
   const existingOrder = await prisma.order.findUnique({
     where: { id },
-    select: { id: true },
+    include: { items: true },
   });
 
   if (!existingOrder) {
     return NextResponse.json({ error: "ไม่พบคำสั่งซื้อ" }, { status: 404 });
   }
 
-  const order = await prisma.order.update({
-    where: { id },
-    data: { status },
-    include: {
-      items: {
-        orderBy: { id: "asc" },
-        select: {
-          id: true,
-          productName: true,
-          productImage: true,
-          productSku: true,
-          price: true,
-          quantity: true,
+  const oldStatus = existingOrder.status;
+  const newStatus = status;
+
+  // Use transaction to ensure status update and stock adjustment happen together
+  const order = await prisma.$transaction(async (tx) => {
+    const updatedOrder = await tx.order.update({
+      where: { id },
+      data: { status: newStatus },
+      include: {
+        items: {
+          orderBy: { id: "asc" },
+          select: {
+            id: true,
+            productId: true,
+            productName: true,
+            productImage: true,
+            productSku: true,
+            price: true,
+            quantity: true,
+          },
         },
       },
-    },
+    });
+
+    // Stock Adjustment Logic
+    if (oldStatus !== "CANCELLED" && newStatus === "CANCELLED") {
+      // If changed TO Cancelled: Return stock to inventory
+      for (const item of existingOrder.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    } else if (oldStatus === "CANCELLED" && newStatus !== "CANCELLED") {
+      // If changed FROM Cancelled: Re-deduct stock from inventory
+      for (const item of existingOrder.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
+    }
+
+    return updatedOrder;
   });
 
   return NextResponse.json({
@@ -69,15 +97,27 @@ export async function DELETE(
 
   const existingOrder = await prisma.order.findUnique({
     where: { id },
-    select: { id: true },
+    include: { items: true },
   });
 
   if (!existingOrder) {
     return NextResponse.json({ error: "ไม่พบคำสั่งซื้อ" }, { status: 404 });
   }
 
-  await prisma.order.delete({
-    where: { id },
+  await prisma.$transaction(async (tx) => {
+    // If order is not CANCELLED, return stock before deleting
+    if (existingOrder.status !== "CANCELLED") {
+      for (const item of existingOrder.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+
+    await tx.order.delete({
+      where: { id },
+    });
   });
 
   return NextResponse.json({ success: true });
